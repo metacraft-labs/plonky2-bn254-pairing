@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use crate::miller_loop_native::SIX_U_PLUS_2_NAF;
-use ark_bn254::{Fq, Fq2};
+use ark_bls12_381::{Fq, Fq2};
 use ark_ff::Field;
 use ark_std::One;
 use num_bigint::BigUint;
@@ -8,9 +8,9 @@ use plonky2::{
     field::extension::Extendable, hash::hash_types::RichField,
     plonk::circuit_builder::CircuitBuilder,
 };
-use plonky2_bn254::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
-use plonky2_bn254::fields::fq12_target::Fq12Target;
-use plonky2_bn254::fields::{fq2_target::Fq2Target, fq_target::FqTarget};
+use plonky2_bls12_381::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
+use plonky2_bls12_381::fields::fq12_target::Fq12Target;
+use plonky2_bls12_381::fields::{fq2_target::Fq2Target, fq_target::FqTarget};
 
 const XI_0: usize = 9;
 
@@ -353,7 +353,7 @@ pub fn multi_miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::{G1Affine, G2Affine};
+    use ark_bls12_381::{G1Affine, G2Affine};
     use ark_std::UniformRand;
     use plonky2::{
         field::goldilocks_field::GoldilocksField,
@@ -369,7 +369,7 @@ mod tests {
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
         miller_loop_target::multi_miller_loop_circuit,
     };
-    use plonky2_bn254::{
+    use plonky2_bls12_381::{
         curves::{g1curve_target::G1Target, g2curve_target::G2Target},
         fields::fq12_target::Fq12Target,
     };

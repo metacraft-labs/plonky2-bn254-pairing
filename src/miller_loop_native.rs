@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
-use ark_bn254::{Fq, Fq2, G1Affine, G2Affine};
+use ark_bls12_381::{Fq, Fq2, G1Affine, G2Affine};
 use ark_ff::{Field, Fp2};
 use ark_std::{One, Zero};
 use num_bigint::BigUint;
 
-use plonky2_bn254::fields::native::MyFq12;
+use plonky2_bls12_381::fields::native::MyFq12;
 
 fn sparse_line_function_unequal_native(
     Q: (&G2Affine, &G2Affine),
@@ -327,8 +327,7 @@ pub fn multi_miller_loop_native(pairs: Vec<(&G1Affine, &G2Affine)>) -> MyFq12 {
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::{Bn254, Fq12, G1Affine, G2Affine};
-    use ark_ec::{pairing::Pairing, AffineRepr};
+    use ark_bls12_381::{G1Affine, G2Affine};
     use ark_std::UniformRand;
 
     use super::{miller_loop_native, multi_miller_loop_native};

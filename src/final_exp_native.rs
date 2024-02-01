@@ -1,14 +1,14 @@
 #![allow(non_snake_case)]
 use std::{ops::Div, vec};
 
-use ark_bn254::{Fq, Fq12, Fq2};
+use ark_bls12_381::{Fq, Fq12, Fq2};
 use ark_ff::Field;
 use ark_std::Zero;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::One;
 
-use plonky2_bn254::fields::native::MyFq12;
+use plonky2_bls12_381::fields::native::MyFq12;
 
 use crate::miller_loop_native::conjugate_fp2;
 
@@ -216,7 +216,7 @@ pub fn final_exp_native(a: MyFq12) -> MyFq12 {
 mod tests {
     use std::ops::Mul;
 
-    use ark_bn254::{Fq, Fq12, Fr, G1Affine, G2Affine};
+    use ark_bls12_381::{Fq, Fq12, Fr, G1Affine, G2Affine};
     use ark_ec::AffineRepr;
     use ark_ff::Field;
     use ark_std::UniformRand;
@@ -224,9 +224,9 @@ mod tests {
     use starky_bn254::utils::biguint_to_bits;
 
     use crate::miller_loop_native::{miller_loop_native, multi_miller_loop_native};
-    use plonky2_bn254::fields::debug_tools::print_ark_fq;
+    use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
-    use super::{final_exp_native, pow_native, BN_X};
+    use super::{final_exp_native, pow_native, BN_X}; // change BN_X
 
     #[test]
     fn test_pairing_final() {
