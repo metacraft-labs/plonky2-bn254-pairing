@@ -15,8 +15,8 @@ use plonky2::{
 use plonky2_bls12_381::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
 
 use crate::exp_inputs::Fq12ExpU64InputTarget;
-use crate::fq12_exp::fq12_exp_u64_circuit;
 use crate::final_exp_native::{frob_coeffs, BN_X};
+use crate::fq12_exp::fq12_exp_u64_circuit;
 
 fn frobenius_map<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
