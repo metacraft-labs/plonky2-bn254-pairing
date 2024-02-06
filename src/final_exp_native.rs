@@ -13,6 +13,7 @@ use plonky2_bls12_381::fields::native::MyFq12;
 use crate::miller_loop_native::conjugate_fp2;
 
 pub const BN_X: u64 = 4965661367192848881;
+pub const BLS_X: i128 = -15132376222941642752;
 
 pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
     let neg_one: BigUint = Fq::from(-1).into();
@@ -135,13 +136,13 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     let mp2_mp3 = mp2 * mp3;
     let y0 = mp * mp2_mp3;
     let y1 = conjugate_fp12(m);
-    let mx = pow_native(m, vec![BN_X]);
+    let mx = pow_native(m, vec![BLS_X as u64]);
     let mxp = frobenius_map_native(mx, 1);
-    let mx2 = pow_native(mx.clone(), vec![BN_X]);
+    let mx2 = pow_native(mx.clone(), vec![BLS_X as u64]);
     let mx2p = frobenius_map_native(mx2, 1);
     let y2 = frobenius_map_native(mx2, 2);
     let y5 = conjugate_fp12(mx2);
-    let mx3 = pow_native(mx2, vec![BN_X]);
+    let mx3 = pow_native(mx2, vec![BLS_X as u64]);
     let mx3p = frobenius_map_native(mx3, 1);
 
     let y3 = conjugate_fp12(mxp);
@@ -226,7 +227,7 @@ mod tests {
     use crate::miller_loop_native::{miller_loop_native, multi_miller_loop_native};
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
-    use super::{final_exp_native, pow_native, BN_X}; // change BN_X
+    use super::{final_exp_native, pow_native, BLS_X}; // change BN_X
 
     #[test]
     fn test_pairing_final() {
@@ -267,8 +268,8 @@ mod tests {
     fn test_pow() {
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let output: Fq12 = pow_native(x.into(), vec![BN_X]).into();
-        let output2 = x.pow(&[BN_X]);
+        let output: Fq12 = pow_native(x.into(), vec![BLS_X as u64]).into();
+        let output2 = x.pow(&[BLS_X as u64]);
         assert_eq!(output, output2);
 
         let final_x: Fq12 = final_exp_native(x.into()).into();

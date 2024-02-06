@@ -385,8 +385,8 @@ mod tests {
         let P = G1Affine::rand(rng);
         let r_expected = miller_loop_native(&Q, &P);
 
-        let config = CircuitConfig::standard_ecc_config();
-        let mut builder = CircuitBuilder::<F, D>::new(config);
+        let config = CircuitConfig::pairing_config();
+        let mut builder: CircuitBuilder<GoldilocksField, 2> = CircuitBuilder::<F, D>::new(config);
 
         let Q_t = G2Target::constant(&mut builder, Q);
         let P_t = G1Target::constant(&mut builder, P);
@@ -412,7 +412,7 @@ mod tests {
 
         let r_expected = multi_miller_loop_native(vec![(&P0, &Q0), (&P1, &Q1)]);
 
-        let config = CircuitConfig::standard_ecc_config();
+        let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
 
         let Q0_t = G2Target::constant(&mut builder, Q0);

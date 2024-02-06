@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
-use ark_bls12_381::{Fq, Fq12, Fq2};
+use ark_bls12_381::{Fq, Fq2};
 use ark_ff::{Field, One, Zero};
 use num_bigint::BigUint;
-
 use plonky2::{
     field::extension::Extendable,
     hash::hash_types::RichField,
+    iop::target::{BoolTarget, Target},
     plonk::{
         circuit_builder::CircuitBuilder,
         config::{AlgebraicHasher, GenericConfig},
@@ -14,9 +14,98 @@ use plonky2::{
 
 use plonky2_bls12_381::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
 
-use crate::exp_inputs::Fq12ExpU64InputTarget;
-use crate::final_exp_native::{frob_coeffs, BN_X};
-use crate::fq12_exp::fq12_exp_u64_circuit;
+use crate::final_exp_native::{frob_coeffs, BLS_X};
+
+pub fn get_naf_target<F: RichField + Extendable<D>, const D: usize>(
+    builder: &mut CircuitBuilder<F, D>,
+    mut exp: Vec<Target>,
+) -> Vec<Target> {
+    // NAF for exp:
+    let mut naf: Vec<Target> = Vec::with_capacity(64 * exp.len());
+    let len = exp.len();
+
+    let borrow_zero = builder.zero();
+    let borrow_one = builder.one();
+    let borrow_two = builder.two();
+    let borrow_true = builder._true();
+    let four = builder.constant(F::from_canonical_u8(4));
+
+    // generate the NAF for exp
+    for idx in 0..len {
+        let mut e = exp[idx];
+        for _ in 0..64 {
+            let e_to_bits = builder.split_le(e, 64); // check num_limbs // use maybe builder.low_bits()?
+            let e_to_bits: Vec<BoolTarget> = e_to_bits
+                .iter()
+                .map(|_e| builder.and(*_e, borrow_true))
+                .collect();
+            if e_to_bits[e_to_bits.len() - 1].eq(&builder._true()) {
+                let e_div_4 = builder.div(e, four);
+                let e_div_4_mul_4 = builder.mul(e_div_4, four);
+                let e_mod_4 = builder.sub(e, e_div_4_mul_4);
+                let z = builder.sub(borrow_two, e_mod_4);
+                e = builder.div(e, borrow_two);
+                if z.eq(&builder.neg_one()) {
+                    e = builder.add(e, borrow_one);
+                }
+                naf.push(z);
+            } else {
+                naf.push(borrow_zero);
+                e = builder.div(e, borrow_two);
+            }
+        }
+        if !e.eq(&borrow_zero) {
+            assert_eq!(e, borrow_one);
+            let mut j = idx + 1;
+            while j < exp.len() && exp[j].eq(&builder.constant(F::from_canonical_u64(u64::MAX))) {
+                exp[j] = borrow_zero;
+                j += 1;
+            }
+            if j < exp.len() {
+                exp[j] = builder.add(exp[j], borrow_one);
+            } else {
+                exp.push(borrow_one);
+            }
+        }
+    }
+    if exp.len() != len {
+        assert_eq!(len, exp.len() + 1);
+        assert!(exp[len] == borrow_one);
+        naf.push(borrow_one);
+    }
+    naf
+}
+
+pub fn pow_target<F: RichField + Extendable<D>, const D: usize>(
+    builder: &mut CircuitBuilder<F, D>,
+    a: Fq12Target<F, D>,
+    exp: Vec<Target>,
+) -> Fq12Target<F, D> {
+    let mut res = a.clone();
+    let mut is_started = false;
+    let naf = get_naf_target::<F, D>(builder, exp);
+
+    for &z in naf.iter().rev() {
+        let z_equals_zero = z.eq(&builder.zero());
+        if is_started {
+            res = res.mul(builder, &res);
+        }
+        if !z_equals_zero {
+            assert!(z.eq(&builder.one()) || z.eq(&builder.neg_one()));
+            if is_started {
+                if z.eq(&builder.one()) {
+                    res = res.mul(builder, &a);
+                } else {
+                    res = res.div(builder, &a);
+                };
+            } else {
+                assert_eq!(z, builder.one());
+                is_started = true;
+            }
+        }
+    }
+    res
+}
 
 fn frobenius_map<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
@@ -74,10 +163,7 @@ fn hard_part_BN<
 where
     <C as GenericConfig<D>>::Hasher: AlgebraicHasher<F>,
 {
-    let offset = Fq12Target::constant(builder, Fq12::one());
-    let exp_val = builder.constant(F::from_canonical_u64(BN_X));
-    let mut exp_inputs = vec![];
-    let mut exp_outputs = vec![];
+    let exp_val = builder.constant(F::from_canonical_u64(BLS_X as u64));
 
     let mp = frobenius_map(builder, m, 1);
     let mp2 = frobenius_map(builder, m, 2);
@@ -87,35 +173,16 @@ where
     let y0 = mp.mul(builder, &mp2_mp3);
     let y1 = m.confugate(builder);
 
-    // let mx = pow(builder, m, BN_X);
+    let _mx = pow_target(builder, m.clone(), vec![exp_val]);
     let mx = Fq12Target::empty(builder);
-    exp_inputs.push(Fq12ExpU64InputTarget {
-        x: m.clone(),
-        offset: offset.clone(),
-        exp_val,
-    });
-    exp_outputs.push(mx.clone());
-
     let mxp = frobenius_map(builder, &mx, 1);
-    // let mx2 = pow(builder, &mx, BN_X);
     let mx2 = Fq12Target::empty(builder);
-    exp_inputs.push(Fq12ExpU64InputTarget {
-        x: mx.clone(),
-        offset: offset.clone(),
-        exp_val,
-    });
-    exp_outputs.push(mx2.clone());
+    let _mx2 = pow_target(builder, _mx, vec![exp_val]);
     let mx2p = frobenius_map(builder, &mx2, 1);
     let y2 = frobenius_map(builder, &mx2, 2);
     let y5 = mx2.confugate(builder);
-    // let mx3 = pow(builder, &mx2, BN_X);
+    let _mx3 = pow_target(builder, mx2, vec![exp_val]);
     let mx3 = Fq12Target::empty(builder);
-    exp_inputs.push(Fq12ExpU64InputTarget {
-        x: mx2.clone(),
-        offset,
-        exp_val,
-    });
-    exp_outputs.push(mx3.clone());
     let mx3p = frobenius_map(builder, &mx3, 1);
 
     let y3 = mxp.confugate(builder);
@@ -138,14 +205,6 @@ where
     T1 = T1.mul(builder, &y0);
     T0 = T0.mul(builder, &T0);
     T0 = T0.mul(builder, &T1);
-
-    let exp_outputs2 = fq12_exp_u64_circuit::<F, C, D>(builder, &exp_inputs);
-    exp_outputs
-        .iter()
-        .zip(exp_outputs2.iter())
-        .for_each(|(a, b)| {
-            Fq12Target::connect(builder, a, b);
-        });
 
     T0
 }
@@ -213,7 +272,7 @@ mod tests {
         let a = Fq12::rand(rng);
         let b_expected = frobenius_map_native(a.into(), power);
 
-        let config = CircuitConfig::standard_ecc_config();
+        let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
         let a_t = Fq12Target::constant(&mut builder, a);
         let b_t = frobenius_map(&mut builder, &a_t, power);
@@ -234,7 +293,7 @@ mod tests {
         let P = G1Affine::rand(rng);
         let input = miller_loop_native(&Q, &P);
 
-        let config = CircuitConfig::standard_ecc_config();
+        let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
         let input_t = Fq12Target::constant(&mut builder, input.into());
         let output = final_exp_circuit::<F, C, D>(&mut builder, input_t);
