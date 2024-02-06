@@ -4,6 +4,8 @@ use std::{ops::Div, vec};
 use ark_bls12_381::{Fq, Fq12, Fq2};
 use ark_ff::Field;
 use ark_std::Zero;
+use bitvec::prelude::Lsb0;
+use bitvec::view::BitView;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::One;
@@ -213,6 +215,19 @@ pub fn final_exp_native(a: MyFq12) -> MyFq12 {
     f
 }
 
+pub fn biguint_to_bits(x: &BigUint, len: usize) -> Vec<bool> {
+    let limbs = x.to_bytes_le();
+    let mut bits = vec![];
+    for limb in limbs {
+        let limb_bits = limb.view_bits::<Lsb0>().iter().map(|b| *b).collect_vec();
+        bits.extend(limb_bits);
+    }
+    assert!(bits.len() <= len);
+    let to_padd = vec![false; len - bits.len()];
+    bits.extend(to_padd);
+    bits
+}
+
 #[cfg(test)]
 mod tests {
     use std::ops::Mul;
@@ -222,9 +237,11 @@ mod tests {
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num_bigint::BigUint;
-    use starky_bn254::utils::biguint_to_bits;
 
-    use crate::miller_loop_native::{miller_loop_native, multi_miller_loop_native};
+    use crate::{
+        final_exp_native::biguint_to_bits,
+        miller_loop_native::{miller_loop_native, multi_miller_loop_native},
+    };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
     use super::{final_exp_native, pow_native, BLS_X}; // change BN_X
@@ -280,7 +297,10 @@ mod tests {
         let exp = (p.pow(12) - 1u32) / r;
         let final_x2 = x.pow(&exp.to_u64_digits());
 
+        println!("256 * 16 = {:?}", 256 * 16);
+        println!("exp = {:?}", exp);
         let exp_bits = biguint_to_bits(&exp, 256 * 16);
+        println!("[1]");
         dbg!(exp_bits.len());
 
         assert_eq!(final_x, final_x2);
