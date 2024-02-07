@@ -14,8 +14,35 @@ use plonky2_bls12_381::fields::native::MyFq12;
 
 use crate::miller_loop_native::conjugate_fp2;
 
-pub const BN_X: u64 = 4965661367192848881;
+// pub const BN_X: u64 = 4965661367192848881;
 pub const BLS_X: i128 = -15132376222941642752;
+pub const NUMBER_STR: &str =
+    "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129000531661671330917035";
+// pub const BLS_X_MOD_O: BigUint = BigUint::from_str_radix(
+//     "52435875175126190479447740508185965837690552500527637822588526323715639541761",
+//     10,
+// )
+// .unwrap();
+// pub const BLS_O: BigInt<5> = ark_ff::BigInt([
+//     52435875175126190,
+//     47944774050818596,
+//     58376905525005276,
+//     37822603658699938,
+//     581184513,
+// ]);
+
+pub fn large_number_to_vec(number_str: &str) -> Vec<u64> {
+    let mut number_vec: Vec<u64> = Vec::new();
+
+    // Convert the string into chunks of u64 values
+    for chunk in number_str.chars().rev().collect::<Vec<char>>().chunks(19) {
+        let chunk_str: String = chunk.iter().rev().collect();
+        let chunk_num: u64 = chunk_str.parse().unwrap();
+        number_vec.push(chunk_num);
+    }
+
+    number_vec
+}
 
 pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
     let neg_one: BigUint = Fq::from(-1).into();
@@ -138,13 +165,13 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     let mp2_mp3 = mp2 * mp3;
     let y0 = mp * mp2_mp3;
     let y1 = conjugate_fp12(m);
-    let mx = pow_native(m, vec![BLS_X as u64]);
+    let mx = pow_native(m, large_number_to_vec(NUMBER_STR));
     let mxp = frobenius_map_native(mx, 1);
-    let mx2 = pow_native(mx.clone(), vec![BLS_X as u64]);
+    let mx2 = pow_native(mx.clone(), large_number_to_vec(NUMBER_STR));
     let mx2p = frobenius_map_native(mx2, 1);
     let y2 = frobenius_map_native(mx2, 2);
     let y5 = conjugate_fp12(mx2);
-    let mx3 = pow_native(mx2, vec![BLS_X as u64]);
+    let mx3 = pow_native(mx2, large_number_to_vec(NUMBER_STR));
     let mx3p = frobenius_map_native(mx3, 1);
 
     let y3 = conjugate_fp12(mxp);
@@ -239,12 +266,12 @@ mod tests {
     use num_bigint::BigUint;
 
     use crate::{
-        final_exp_native::biguint_to_bits,
+        final_exp_native::{biguint_to_bits, large_number_to_vec, NUMBER_STR},
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
-    use super::{final_exp_native, pow_native, BLS_X}; // change BN_X
+    use super::{final_exp_native, pow_native}; // change BN_X
 
     #[test]
     fn test_pairing_final() {
@@ -283,10 +310,14 @@ mod tests {
 
     #[test]
     fn test_pow() {
+        println!(
+            "large_number_to_vec = {:?}",
+            large_number_to_vec(NUMBER_STR)
+        );
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let output: Fq12 = pow_native(x.into(), vec![BLS_X as u64]).into();
-        let output2 = x.pow(&[BLS_X as u64]);
+        let output: Fq12 = pow_native(x.into(), large_number_to_vec(NUMBER_STR)).into();
+        let output2 = x.pow(&large_number_to_vec(NUMBER_STR));
         assert_eq!(output, output2);
 
         let final_x: Fq12 = final_exp_native(x.into()).into();
