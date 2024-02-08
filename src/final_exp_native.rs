@@ -4,7 +4,7 @@ use std::{ops::Div, vec};
 use ark_bls12_381::{Fq, Fq12, Fq2};
 use ark_ff::Field;
 use ark_std::Zero;
-use bitvec::prelude::Lsb0;
+use bitvec::prelude::*;
 use bitvec::view::BitView;
 use itertools::Itertools;
 use num_bigint::BigUint;
@@ -18,18 +18,6 @@ use crate::miller_loop_native::conjugate_fp2;
 pub const BLS_X: i128 = -15132376222941642752;
 pub const NUMBER_STR: &str =
     "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129000531661671330917035";
-// pub const BLS_X_MOD_O: BigUint = BigUint::from_str_radix(
-//     "52435875175126190479447740508185965837690552500527637822588526323715639541761",
-//     10,
-// )
-// .unwrap();
-// pub const BLS_O: BigInt<5> = ark_ff::BigInt([
-//     52435875175126190,
-//     47944774050818596,
-//     58376905525005276,
-//     37822603658699938,
-//     581184513,
-// ]);
 
 pub fn large_number_to_vec(number_str: &str) -> Vec<u64> {
     let mut number_vec: Vec<u64> = Vec::new();
@@ -271,7 +259,7 @@ mod tests {
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
-    use super::{final_exp_native, pow_native}; // change BN_X
+    use super::{final_exp_native, pow_native};
 
     #[test]
     fn test_pairing_final() {
@@ -328,10 +316,7 @@ mod tests {
         let exp = (p.pow(12) - 1u32) / r;
         let final_x2 = x.pow(&exp.to_u64_digits());
 
-        println!("256 * 16 = {:?}", 256 * 16);
-        println!("exp = {:?}", exp);
-        let exp_bits = biguint_to_bits(&exp, 256 * 16);
-        println!("[1]");
+        let exp_bits = biguint_to_bits(&exp, 381 * 16);
         dbg!(exp_bits.len());
 
         assert_eq!(final_x, final_x2);
