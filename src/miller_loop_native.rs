@@ -31,13 +31,13 @@ fn sparse_line_function_equal_native(Q: &G2Affine, P: &G1Affine) -> Vec<Option<F
     let (x, y) = (&Q.x, &Q.y);
     let x_sq = x * x;
     let x_cube = x_sq * x;
-    let three_x_cu = x_cube * Fq2::from(3);
+    let three_x_cu = x_cube * Fq2::from(3); // fq2 3 * x ^ 3
     let y_sq = y * y;
-    let two_y_sq = y_sq * Fq2::from(2);
-    let out0_left = three_x_cu - two_y_sq;
-    let out0 = out0_left * Fq2::new(Fq::from(9), Fq::one());
-    let x_sq_px: Fq2 = x_sq * Fq2::new(P.x, Fq::zero());
-    let out4 = x_sq_px * Fq2::from(-3);
+    let two_y_sq = y_sq * Fq2::from(2); //  // fq2 2 * y ^ 2
+    let out0_left = three_x_cu - two_y_sq; // (fq2 3 * x ^ 3 - fq2 2 * y ^ 2)
+    let out0 = out0_left * Fq2::new(Fq::from(1), Fq::one()); // (fq2 3 * x ^ 3 - fq2 2 * y ^ 2) * fq2(fq9,fq1)
+    let x_sq_px: Fq2 = x_sq * Fq2::new(P.x, Fq::zero()); // x^2 * fq2(p.x, Fq0)
+    let out4 = x_sq_px * Fq2::from(-3); // x^2 * fq2(p.x, Fq0) * Fq2 -3
     let y_py = y * Fq2::new(P.y, Fq::zero());
     let out3 = y_py * Fq2::from(2);
     vec![Some(out0), None, None, Some(out3), Some(out4), None]
@@ -71,7 +71,7 @@ fn sparse_fp12_multiply_native(a: &MyFq12, b: Vec<Option<Fq2>>) -> MyFq12 {
         let prod = if i != 5 {
             let eval_w6 = prod_2d[i + 6]
                 .as_ref()
-                .map(|a| a * Fq2::new(Fq::from(9), Fq::one()));
+                .map(|a| a * Fq2::new(Fq::from(1), Fq::one())); // not sure for Fq2::from(1) because we aren't evaluating w^6
             match (prod_2d[i].as_ref(), eval_w6) {
                 (None, b) => b.unwrap(),
                 (Some(a), None) => a.clone(),
@@ -175,7 +175,7 @@ fn miller_loop_BN_native(Q: &G2Affine, P: &G1Affine, pseudo_binary_encoding: &[i
 
     let neg_one: BigUint = Fq::from(-1).into();
     let k = neg_one / BigUint::from(6u32);
-    let expected_c = Fq2::new(Fq::from(9), Fq::one()).pow(k.to_u64_digits());
+    let expected_c = Fq2::new(Fq::from(1), Fq::one()).pow(k.to_u64_digits()); // not sure again for Fq::from(1) maybe from(9)
 
     let c2 = expected_c * expected_c;
     let c3 = c2 * expected_c;
@@ -265,7 +265,7 @@ fn multi_miller_loop_BN_native(
 
     let neg_one: BigUint = Fq::from(-1).into();
     let k = neg_one / BigUint::from(6u32);
-    let expected_c = Fq2::new(Fq::from(9), Fq::one()).pow(k.to_u64_digits());
+    let expected_c = Fq2::new(Fq::from(1), Fq::one()).pow(k.to_u64_digits());
 
     let c2 = expected_c * expected_c;
     let c3 = c2 * expected_c;

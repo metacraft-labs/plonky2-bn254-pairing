@@ -14,8 +14,7 @@ use plonky2_bls12_381::fields::native::MyFq12;
 
 use crate::miller_loop_native::conjugate_fp2;
 
-// pub const BN_X: u64 = 4965661367192848881;
-pub const BLS_X: i128 = -15132376222941642752;
+pub const BLS_X: u64 = 0xd201_0000_0001_0000;
 pub const NUMBER_STR: &str =
     "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129000531661671330917035";
 
@@ -153,13 +152,13 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     let mp2_mp3 = mp2 * mp3;
     let y0 = mp * mp2_mp3;
     let y1 = conjugate_fp12(m);
-    let mx = pow_native(m, large_number_to_vec(NUMBER_STR));
+    let mx = pow_native(m, vec![BLS_X]);
     let mxp = frobenius_map_native(mx, 1);
-    let mx2 = pow_native(mx.clone(), large_number_to_vec(NUMBER_STR));
+    let mx2 = pow_native(mx.clone(), vec![BLS_X]);
     let mx2p = frobenius_map_native(mx2, 1);
     let y2 = frobenius_map_native(mx2, 2);
     let y5 = conjugate_fp12(mx2);
-    let mx3 = pow_native(mx2, large_number_to_vec(NUMBER_STR));
+    let mx3 = pow_native(mx2, vec![BLS_X]);
     let mx3p = frobenius_map_native(mx3, 1);
 
     let y3 = conjugate_fp12(mxp);
@@ -205,7 +204,7 @@ pub fn frob_coeffs(index: usize) -> Fq2 {
     let num: BigUint = modulus.pow(index as u32) - 1u64;
     let k: BigUint = num.div(6u64);
 
-    let c = Fq2::new(Fq::from(9), Fq::one());
+    let c = Fq2::new(Fq::from(1), Fq::one());
     c.pow(k.to_u64_digits())
 }
 
@@ -213,9 +212,9 @@ pub fn frob_coeffs(index: usize) -> Fq2 {
 fn easy_part<'v>(a: MyFq12) -> MyFq12 {
     let f1 = conjugate_fp12(a);
     let f2 = {
-        let f1_fp12: Fq12 = f1.into();
-        let a_fp12: Fq12 = a.into();
-        let divided = f1_fp12 / a_fp12;
+        let f1_fp12: Fq12 = f1.into(); // -a fq12
+        let a_fp12: Fq12 = a.into(); // a fq12
+        let divided = f1_fp12 / a_fp12; // -a/a
         divided.into()
     };
     let f3 = frobenius_map_native(f2, 2);
@@ -226,7 +225,7 @@ fn easy_part<'v>(a: MyFq12) -> MyFq12 {
 // out = in^{(q^12 - 1)/r}
 pub fn final_exp_native(a: MyFq12) -> MyFq12 {
     let f0 = easy_part(a);
-    let f = hard_part_BN_native(f0);
+    let f = hard_part_BN_native(f0); // -a/a as an input
     f
 }
 
@@ -254,7 +253,7 @@ mod tests {
     use num_bigint::BigUint;
 
     use crate::{
-        final_exp_native::{biguint_to_bits, large_number_to_vec, NUMBER_STR},
+        final_exp_native::{biguint_to_bits, large_number_to_vec, BLS_X, NUMBER_STR},
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
@@ -304,11 +303,11 @@ mod tests {
         );
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let output: Fq12 = pow_native(x.into(), large_number_to_vec(NUMBER_STR)).into();
-        let output2 = x.pow(&large_number_to_vec(NUMBER_STR));
+        let output: Fq12 = pow_native(x.into(), vec![BLS_X]).into();
+        let output2 = x.pow(&vec![BLS_X]);
         assert_eq!(output, output2);
 
-        let final_x: Fq12 = final_exp_native(x.into()).into();
+        let final_x: Fq12 = final_exp_native(x.into()).into(); // in^{(q^12 - 1)/r}
 
         use ark_ff::PrimeField;
         let p: BigUint = Fq::MODULUS.into();

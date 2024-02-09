@@ -12,7 +12,7 @@ use plonky2_bls12_381::curves::{g1curve_target::G1Target, g2curve_target::G2Targ
 use plonky2_bls12_381::fields::fq12_target::Fq12Target;
 use plonky2_bls12_381::fields::{fq2_target::Fq2Target, fq_target::FqTarget};
 
-const XI_0: usize = 9;
+const XI_0: usize = 1;
 
 fn sparse_line_function_unequal<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
@@ -40,7 +40,7 @@ fn sparse_line_function_equal<F: RichField + Extendable<D>, const D: usize>(
 ) -> Vec<Option<Fq2Target<F, D>>> {
     let (x, y) = (&Q.x, &Q.y);
     let x_sq = x.mul(builder, &x);
-    let x_cube = x_sq.mul(builder, &x);
+    let x_cube = x_sq.mul(builder, &x); // v^3
     let three_x_cu = x_cube.mul_scalar_const(builder, &Fq::from(3));
     let y_sq = y.mul(builder, &y);
     let two_y_sq = y_sq.mul_scalar_const(builder, &Fq::from(2));
@@ -199,7 +199,7 @@ fn miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
 
     let neg_one: BigUint = Fq::from(-1).into();
     let k = neg_one / BigUint::from(6u32);
-    let expected_c = Fq2::new(Fq::from(9), Fq::one()).pow(k.to_u64_digits());
+    let expected_c = Fq2::new(Fq::from(1), Fq::one()).pow(k.to_u64_digits());
     let c2 = expected_c * expected_c;
     let c3 = c2 * expected_c;
     let c2 = Fq2Target::constant(builder, c2);
@@ -291,7 +291,7 @@ fn multi_miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
 
     let neg_one: BigUint = Fq::from(-1).into();
     let k = neg_one / BigUint::from(6u32);
-    let expected_c = Fq2::new(Fq::from(9), Fq::one()).pow(k.to_u64_digits());
+    let expected_c = Fq2::new(Fq::from(1), Fq::one()).pow(k.to_u64_digits());
 
     let c2 = expected_c * expected_c;
     let c3 = c2 * expected_c;
