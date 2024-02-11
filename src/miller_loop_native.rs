@@ -15,18 +15,40 @@ fn sparse_line_function_unequal_native(
     let (x_2, y_2) = (&Q.1.x, &Q.1.y);
     let (x, y) = (&P.x, &P.y);
 
-    let y1_minus_y2 = y_1 - y_2;
-    let x2_minus_x1 = x_2 - x_1;
+    let y1_minus_y2 = y_1 - y_2; // Q.0.y - Q.1.y
+    let x2_minus_x1 = x_2 - x_1; // Q.1.x - Q.0.x
     let x1y2 = x_1 * y_2;
     let x2y1 = x_2 * y_1;
 
-    let out3 = y1_minus_y2 * Fq2::new(x.clone(), Fq::zero());
-    let out2 = x2_minus_x1 * Fq2::new(y.clone(), Fq::zero());
+    let out3 = y1_minus_y2 * Fq2::new(x.clone(), Fq::zero()); // Q.0.y - Q.1.y * Fq2 (x, 0)
+    let out2 = x2_minus_x1 * Fq2::new(y.clone(), Fq::zero());//  Q.1.x - Q.0.x * Fq2 (y, 0)
     let out5 = x1y2 - x2y1;
 
     vec![None, None, Some(out2), Some(out3), None, Some(out5)]
 }
 
+fn test_sparse_line_function_unequal_native(
+    Q: (&G2Affine, &G2Affine),
+    P: &G1Affine,
+) -> Vec<Option<Fq2>> {
+    let (x_1, y_1) = (&Q.0.x, &Q.0.y);
+    let (x_2, y_2) = (&Q.1.x, &Q.1.y);
+    let (x, y) = (&P.x, &P.y);
+
+    let y1_minus_y2 = y_1 - y_2; // Q.0.y - Q.1.y
+    let x2_minus_x1 = x_2 - x_1; // Q.1.x - Q.0.x
+    let x1y2 = x_1 * y_2;
+    let x2y1 = x_2 * y_1;
+
+    let out3 = y1_minus_y2 * Fq2::new(x.clone(), Fq::zero()); // Q.0.y - Q.1.y * Fq2 (x, 0)
+    let out2 = x2_minus_x1 * Fq2::new(y.clone(), Fq::zero());//  Q.1.x - Q.0.x * Fq2 (y, 0)
+    let out5 = x1y2 - x2y1;
+
+    vec![None, None, Some(out2), Some(out3), None, Some(out5)]
+}
+
+// CRITICAL CONCERN
+// Create a function representing the line between P1 and P2, ???
 fn sparse_line_function_equal_native(Q: &G2Affine, P: &G1Affine) -> Vec<Option<Fq2>> {
     let (x, y) = (&Q.x, &Q.y);
     let x_sq = x * x;
@@ -71,7 +93,7 @@ fn sparse_fp12_multiply_native(a: &MyFq12, b: Vec<Option<Fq2>>) -> MyFq12 {
         let prod = if i != 5 {
             let eval_w6 = prod_2d[i + 6]
                 .as_ref()
-                .map(|a| a * Fq2::new(Fq::from(1), Fq::one())); // not sure for Fq2::from(1) because we aren't evaluating w^6
+                .map(|a| a * Fq2::new(Fq::from(1), Fq::one()));
             match (prod_2d[i].as_ref(), eval_w6) {
                 (None, b) => b.unwrap(),
                 (Some(a), None) => a.clone(),
@@ -175,7 +197,7 @@ fn miller_loop_BN_native(Q: &G2Affine, P: &G1Affine, pseudo_binary_encoding: &[i
 
     let neg_one: BigUint = Fq::from(-1).into();
     let k = neg_one / BigUint::from(6u32);
-    let expected_c = Fq2::new(Fq::from(1), Fq::one()).pow(k.to_u64_digits()); // not sure again for Fq::from(1) maybe from(9)
+    let expected_c = Fq2::new(Fq::from(1), Fq::one()).pow(k.to_u64_digits());
 
     let c2 = expected_c * expected_c;
     let c3 = c2 * expected_c;
@@ -295,34 +317,41 @@ pub fn neg_conjugate_fp2(x: Fq2) -> Fq2 {
     }
 }
 
+// PROBLEM BUT NO CONCERN
 fn twisted_frobenius(Q: &G2Affine, c2: Fq2, c3: Fq2) -> G2Affine {
     let frob_x = conjugate_fp2(Q.x);
     let frob_y = conjugate_fp2(Q.y);
     let out_x = c2 * frob_x;
     let out_y = c3 * frob_y;
+    println!("twisted_frobenius are: (out_x; out_y) are: , {:?}, {:?}", out_x, out_y);
     G2Affine::new(out_x, out_y)
 }
 
+// PROBLEM BUT NO CONCERN
 fn neg_twisted_frobenius(Q: &G2Affine, c2: Fq2, c3: Fq2) -> G2Affine {
     let frob_x = conjugate_fp2(Q.x);
     let neg_frob_y = neg_conjugate_fp2(Q.y);
     let out_x = c2 * frob_x;
     let out_y = c3 * neg_frob_y;
+    println!("neg_twisted_frobenius are: (out_x; out_y) are: , {:?}, {:?}", out_x, out_y);
     G2Affine::new(out_x, out_y)
 }
 
+// BIG CONCERN
 pub const SIX_U_PLUS_2_NAF: [i8; 65] = [
     0, 0, 0, 1, 0, 1, 0, -1, 0, 0, 1, -1, 0, 0, 1, 0, 0, 1, 1, 0, -1, 0, 0, 1, 0, -1, 0, 0, 0, 0,
     1, 1, 1, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 1, 0, 0, -1, 0, 0, 0, 1, 1, 0, -1, 0,
     0, 1, 0, 1, 1,
 ];
 
+pub const PSEUDO_BINARY_ENCODING: [i8; 64] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,1,1,];
+
 pub fn miller_loop_native(Q: &G2Affine, P: &G1Affine) -> MyFq12 {
-    miller_loop_BN_native(Q, P, &SIX_U_PLUS_2_NAF)
+    miller_loop_BN_native(Q, P, &PSEUDO_BINARY_ENCODING)
 }
 
 pub fn multi_miller_loop_native(pairs: Vec<(&G1Affine, &G2Affine)>) -> MyFq12 {
-    multi_miller_loop_BN_native(pairs, &SIX_U_PLUS_2_NAF)
+    multi_miller_loop_BN_native(pairs, &PSEUDO_BINARY_ENCODING)
 }
 
 #[cfg(test)]
