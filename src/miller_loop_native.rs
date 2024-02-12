@@ -7,6 +7,7 @@ use num_bigint::BigUint;
 
 use plonky2_bls12_381::fields::native::MyFq12;
 
+// This function representing https://hackmd.io/@Wimet/ry7z1Xj-2#Different-Points
 fn sparse_line_function_unequal_native(
     Q: (&G2Affine, &G2Affine),
     P: &G1Affine,
@@ -21,34 +22,50 @@ fn sparse_line_function_unequal_native(
     let x2y1 = x_2 * y_1;
 
     let out3 = y1_minus_y2 * Fq2::new(x.clone(), Fq::zero()); // Q.0.y - Q.1.y * Fq2 (x, 0)
-    let out2 = x2_minus_x1 * Fq2::new(y.clone(), Fq::zero());//  Q.1.x - Q.0.x * Fq2 (y, 0)
+    let out2 = x2_minus_x1 * Fq2::new(y.clone(), Fq::zero()); //  Q.1.x - Q.0.x * Fq2 (y, 0)
     let out5 = x1y2 - x2y1;
 
     vec![None, None, Some(out2), Some(out3), None, Some(out5)]
 }
 
-fn test_sparse_line_function_unequal_native(
-    Q: (&G2Affine, &G2Affine),
-    P: &G1Affine,
-) -> Vec<Option<Fq2>> {
+// Computing the Optimal Ate Pairing
+// from https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-pairing-friendly-curves-08#name-computing-the-optimal-ate-p
+fn line_function(Q: (&G2Affine, &G2Affine), P: &G1Affine) -> Fq2 {
     let (x_1, y_1) = (&Q.0.x, &Q.0.y);
     let (x_2, y_2) = (&Q.1.x, &Q.1.y);
     let (x, y) = (&P.x, &P.y);
 
-    let y1_minus_y2 = y_1 - y_2; // Q.0.y - Q.1.y
-    let x2_minus_x1 = x_2 - x_1; // Q.1.x - Q.0.x
-    let x1y2 = x_1 * y_2;
-    let x2y1 = x_2 * y_1;
+    // A = B
+    let x_1_sq = x_1 * x_1;
+    let x_1_sq_times_3 = x_1_sq * Fq2::from(3);
+    let y_1_times_2 = y_1 * Fq2::from(2);
+    // A != B
+    let y_2_minus_y_1 = y_2 - y_1;
+    let x_2_minus_x_1 = x_2 - x_1;
 
-    let out3 = y1_minus_y2 * Fq2::new(x.clone(), Fq::zero()); // Q.0.y - Q.1.y * Fq2 (x, 0)
-    let out2 = x2_minus_x1 * Fq2::new(y.clone(), Fq::zero());//  Q.1.x - Q.0.x * Fq2 (y, 0)
-    let out5 = x1y2 - x2y1;
+    let l;
+    if x_1 == x_2 && y_1 == y_2 {
+        l = x_1_sq_times_3 / y_1_times_2;
+    } else if y_1.eq(&neg_conjugate_fp2(*y_2)) && x_1.eq(&neg_conjugate_fp2(*x_2)) {
+        return Fq2::new(x.clone(), Fq::zero()) - x_1;
+    } else {
+        l = y_2_minus_y_1 / x_2_minus_x_1;
+    }
 
-    vec![None, None, Some(out2), Some(out3), None, Some(out5)]
+    // IF (P[1] -A[1]) + A[2] -P[2]) IS WITH NEGATION
+    // let x_minus_x_1 = Fq2::new(x.clone(), Fq::zero()) + neg_conjugate_fp2(*x_1);
+    // let y_1_minus_y = y_1 + neg_conjugate_fp2(Fq2::new(y.clone(), Fq::zero()));
+
+    let x_minus_x_1 = Fq2::new(x.clone(), Fq::zero()) - x_1;
+    let y_1_minus_y = y_1 + Fq2::new(y.clone(), Fq::zero());
+    let l_times_x_minus_x_1 = l * x_minus_x_1;
+
+    return l_times_x_minus_x_1 + y_1_minus_y;
 }
 
 // CRITICAL CONCERN
 // Create a function representing the line between P1 and P2, ???
+// This function representing https://hackmd.io/@Wimet/ry7z1Xj-2#The-Same-Points
 fn sparse_line_function_equal_native(Q: &G2Affine, P: &G1Affine) -> Vec<Option<Fq2>> {
     let (x, y) = (&Q.x, &Q.y);
     let x_sq = x * x;
@@ -323,7 +340,10 @@ fn twisted_frobenius(Q: &G2Affine, c2: Fq2, c3: Fq2) -> G2Affine {
     let frob_y = conjugate_fp2(Q.y);
     let out_x = c2 * frob_x;
     let out_y = c3 * frob_y;
-    println!("twisted_frobenius are: (out_x; out_y) are: , {:?}, {:?}", out_x, out_y);
+    println!(
+        "twisted_frobenius are: (out_x; out_y) are: , {:?}, {:?}",
+        out_x, out_y
+    );
     G2Affine::new(out_x, out_y)
 }
 
@@ -333,7 +353,10 @@ fn neg_twisted_frobenius(Q: &G2Affine, c2: Fq2, c3: Fq2) -> G2Affine {
     let neg_frob_y = neg_conjugate_fp2(Q.y);
     let out_x = c2 * frob_x;
     let out_y = c3 * neg_frob_y;
-    println!("neg_twisted_frobenius are: (out_x; out_y) are: , {:?}, {:?}", out_x, out_y);
+    println!(
+        "neg_twisted_frobenius are: (out_x; out_y) are: , {:?}, {:?}",
+        out_x, out_y
+    );
     G2Affine::new(out_x, out_y)
 }
 
@@ -344,14 +367,72 @@ pub const SIX_U_PLUS_2_NAF: [i8; 65] = [
     0, 1, 0, 1, 1,
 ];
 
-pub const PSEUDO_BINARY_ENCODING: [i8; 64] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,1,1,];
+// 0000000000000000100000000000000000000000000000001000000001001011
+// -1101001000000001000000000000000000000000000000010000000000000000
+// 000000000000000010000000000000000000000000000000100000000100101-1
+pub const PSEUDO_BINARY_ENCODING_NEGATIVE: [i8; 64] = [
+    -1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,
+];
+
+pub const PSEUDO_BINARY_ENCODING_POSITIVE: [i8; 64] = [
+    1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+pub const PSEUDO_BINARY_REVERSE_NEGATIVE: [i8; 64] = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1,
+    -1,
+];
+
+pub const PSEUDO_BINARY_ENCODING_REVERSE_POSITIVE: [i8; 64] = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1,
+];
+
+pub const TEST: [i8; 64] = [
+    0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+pub const _TEST: [i8; 381] = [
+    1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1,
+    1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0,
+    0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0,
+    0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1,
+    0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1,
+    1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1,
+    0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1,
+    1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0,
+    1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1,
+    1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1,
+    0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1,
+];
+
+pub const _TEST_REVERSED: [i8; 381] = [
+    1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1,
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1,
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0,
+    0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1,
+    0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0,
+    1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1,
+    0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0,
+    1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0,
+    0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0,
+    0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0,
+    0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1,
+];
 
 pub fn miller_loop_native(Q: &G2Affine, P: &G1Affine) -> MyFq12 {
-    miller_loop_BN_native(Q, P, &PSEUDO_BINARY_ENCODING)
+    miller_loop_BN_native(Q, P, &_TEST_REVERSED)
 }
 
 pub fn multi_miller_loop_native(pairs: Vec<(&G1Affine, &G2Affine)>) -> MyFq12 {
-    multi_miller_loop_BN_native(pairs, &PSEUDO_BINARY_ENCODING)
+    multi_miller_loop_BN_native(pairs, &_TEST_REVERSED)
 }
 
 #[cfg(test)]

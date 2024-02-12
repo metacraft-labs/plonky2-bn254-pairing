@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use crate::miller_loop_native::{PSEUDO_BINARY_ENCODING, SIX_U_PLUS_2_NAF};
+use crate::miller_loop_native::PSEUDO_BINARY_ENCODING_REVERSE_POSITIVE;
 use ark_bls12_381::{Fq, Fq2};
 use ark_ff::Field;
 use ark_std::One;
@@ -12,7 +12,7 @@ use plonky2_bls12_381::curves::{g1curve_target::G1Target, g2curve_target::G2Targ
 use plonky2_bls12_381::fields::fq12_target::Fq12Target;
 use plonky2_bls12_381::fields::{fq2_target::Fq2Target, fq_target::FqTarget};
 
-const XI_0: usize = 9;
+const XI_0: usize = 1;
 
 fn sparse_line_function_unequal<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
@@ -341,14 +341,14 @@ pub fn miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     Q: &G2Target<F, D>,
     P: &G1Target<F, D>,
 ) -> Fq12Target<F, D> {
-    miller_loop_BN(builder, Q, P, &PSEUDO_BINARY_ENCODING)
+    miller_loop_BN(builder, Q, P, &PSEUDO_BINARY_ENCODING_REVERSE_POSITIVE)
 }
 
 pub fn multi_miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     pairs: Vec<(&G1Target<F, D>, &G2Target<F, D>)>,
 ) -> Fq12Target<F, D> {
-    multi_miller_loop_BN(builder, pairs, &PSEUDO_BINARY_ENCODING)
+    multi_miller_loop_BN(builder, pairs, &PSEUDO_BINARY_ENCODING_REVERSE_POSITIVE)
 }
 
 #[cfg(test)]
