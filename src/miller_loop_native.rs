@@ -427,12 +427,88 @@ pub const _TEST_REVERSED: [i8; 381] = [
     0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1,
 ];
 
+pub const TEST_PYTHON_CONSTANT: [i8; 64] = [    0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+1,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+1,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+0,
+1,
+0,
+0,
+1,
+0,
+1,
+1,];
+
+pub const TEST_NOIR_CONSTANT: [i8; 66] = [0, 0, 0, 1, 0, 1, 0, -1, 0, 0, -1, 0, 0, 0, 1, 0, 0, -1, 0, -1, 
+0, 0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0, 1, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, -1, 0, 0, -1, 0, 1, 0, -1, 0, 0, 
+0, -1, 0, -1, 0, 0, 0, 1, 0, -1, 0, 1
+];
+
+pub const TEST_HASKELL_CONSTANT: [i8; 64] = [-1,-1, 0,-1, 0, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 0
+, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,-1, 0
+, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+];
+
 pub fn miller_loop_native(Q: &G2Affine, P: &G1Affine) -> MyFq12 {
-    miller_loop_BN_native(Q, P, &_TEST_REVERSED)
+    miller_loop_BN_native(Q, P, &TEST_PYTHON_CONSTANT)
 }
 
 pub fn multi_miller_loop_native(pairs: Vec<(&G1Affine, &G2Affine)>) -> MyFq12 {
-    multi_miller_loop_BN_native(pairs, &_TEST_REVERSED)
+    multi_miller_loop_BN_native(pairs, &TEST_PYTHON_CONSTANT)
 }
 
 #[cfg(test)]
