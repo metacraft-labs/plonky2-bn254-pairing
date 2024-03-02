@@ -28,41 +28,6 @@ fn sparse_line_function_unequal_native(
     vec![None, None, Some(out2), Some(out3), None, Some(out5)]
 }
 
-// Computing the Optimal Ate Pairing
-// from https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-pairing-friendly-curves-08#name-computing-the-optimal-ate-p
-fn line_function(Q: (&G2Affine, &G2Affine), P: &G1Affine) -> Fq2 {
-    let (x_1, y_1) = (&Q.0.x, &Q.0.y);
-    let (x_2, y_2) = (&Q.1.x, &Q.1.y);
-    let (x, y) = (&P.x, &P.y);
-
-    // A = B
-    let x_1_sq = x_1 * x_1;
-    let x_1_sq_times_3 = x_1_sq * Fq2::from(3);
-    let y_1_times_2 = y_1 * Fq2::from(2);
-    // A != B
-    let y_2_minus_y_1 = y_2 - y_1;
-    let x_2_minus_x_1 = x_2 - x_1;
-
-    let l;
-    if x_1 == x_2 && y_1 == y_2 {
-        l = x_1_sq_times_3 / y_1_times_2;
-    } else if y_1.eq(&neg_conjugate_fp2(*y_2)) && x_1.eq(&neg_conjugate_fp2(*x_2)) {
-        return Fq2::new(x.clone(), Fq::zero()) - x_1;
-    } else {
-        l = y_2_minus_y_1 / x_2_minus_x_1;
-    }
-
-    // IF (P[1] -A[1]) + A[2] -P[2]) IS WITH NEGATION
-    // let x_minus_x_1 = Fq2::new(x.clone(), Fq::zero()) + neg_conjugate_fp2(*x_1);
-    // let y_1_minus_y = y_1 + neg_conjugate_fp2(Fq2::new(y.clone(), Fq::zero()));
-
-    let x_minus_x_1 = Fq2::new(x.clone(), Fq::zero()) - x_1;
-    let y_1_minus_y = y_1 + Fq2::new(y.clone(), Fq::zero());
-    let l_times_x_minus_x_1 = l * x_minus_x_1;
-
-    return l_times_x_minus_x_1 + y_1_minus_y;
-}
-
 // CRITICAL CONCERN
 // Create a function representing the line between P1 and P2, ???
 // This function representing https://hackmd.io/@Wimet/ry7z1Xj-2#The-Same-Points
@@ -80,6 +45,7 @@ fn sparse_line_function_equal_native(Q: &G2Affine, P: &G1Affine) -> Vec<Option<F
     let y_py = y * Fq2::new(P.y, Fq::zero());
     let out3 = y_py * Fq2::from(2);
     vec![Some(out0), None, None, Some(out3), Some(out4), None]
+    
 }
 
 fn sparse_fp12_multiply_native(a: &MyFq12, b: Vec<Option<Fq2>>) -> MyFq12 {
@@ -513,10 +479,28 @@ pub fn multi_miller_loop_native(pairs: Vec<(&G1Affine, &G2Affine)>) -> MyFq12 {
 
 #[cfg(test)]
 mod tests {
-    use ark_bls12_381::{G1Affine, G2Affine};
+    use ark_bls12_381::{Fq12, G1Affine, G2Affine};
+    use ark_ec::AffineRepr;
     use ark_std::UniformRand;
+    use num::One;
+    use plonky2_bls12_381::fields::native::MyFq12;
 
     use super::{miller_loop_native, multi_miller_loop_native};
+
+    #[test]
+    fn my_miller_loop_test() {
+        // TESTED ON PURE BN254 LOGIC AND STILL FAILS
+        // let rng = &mut rand::thread_rng();
+        let P0 = G1Affine::identity();
+        // let P0 = G1Affine::rand(rng);
+        let Q0 = G2Affine::generator();
+        // let Q0 = G2Affine::rand(rng);
+        let r = miller_loop_native(&Q0, &P0);
+        let one = MyFq12::from(Fq12::one());
+        print!("one is: {:?}", one);
+        print!("r is: {:?}", r);
+        assert!(r == one);
+    }
 
     #[test]
     fn test_multi_miller_loop_native() {
