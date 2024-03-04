@@ -1,18 +1,16 @@
 #![allow(non_snake_case)]
-use crate::miller_loop_native::SIX_U_PLUS_2_NAF;
-use ark_bn254::{Fq, Fq2};
+use crate::miller_loop_native::PSEUDO_BINARY_ENCODING;
+use ark_bls12_381::Fq;
 use ark_ff::Field;
-use ark_std::One;
-use num_bigint::BigUint;
 use plonky2::{
     field::extension::Extendable, hash::hash_types::RichField,
     plonk::circuit_builder::CircuitBuilder,
 };
-use plonky2_bn254::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
-use plonky2_bn254::fields::fq12_target::Fq12Target;
-use plonky2_bn254::fields::{fq2_target::Fq2Target, fq_target::FqTarget};
+use plonky2_bls12_381::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
+use plonky2_bls12_381::fields::fq12_target::Fq12Target;
+use plonky2_bls12_381::fields::{fq2_target::Fq2Target, fq_target::FqTarget};
 
-const XI_0: usize = 9;
+const I_0: usize = 1;
 
 fn sparse_line_function_unequal<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
@@ -45,7 +43,7 @@ fn sparse_line_function_equal<F: RichField + Extendable<D>, const D: usize>(
     let y_sq = y.mul(builder, &y);
     let two_y_sq = y_sq.mul_scalar_const(builder, &Fq::from(2));
     let out0_left = three_x_cu.sub(builder, &two_y_sq);
-    let out0 = out0_left.mul_w6::<XI_0>(builder);
+    let out0 = out0_left.mul_w6::<I_0>(builder);
     let x_sq_px = x_sq.mul_scalar(builder, &P.x);
     let out4 = x_sq_px.mul_scalar_const(builder, &Fq::from(-3));
     let y_py = y.mul_scalar(builder, &P.y);
@@ -85,7 +83,7 @@ fn sparse_fp12_multiply<F: RichField + Extendable<D>, const D: usize>(
     let mut out_fp2 = Vec::with_capacity(6);
     for i in 0..6 {
         let prod = if i != 5 {
-            let eval_w6 = prod_2d[i + 6].as_ref().map(|a| a.mul_w6::<XI_0>(builder));
+            let eval_w6 = prod_2d[i + 6].as_ref().map(|a| a.mul_w6::<I_0>(builder));
             match (prod_2d[i].as_ref(), eval_w6) {
                 (None, b) => b.unwrap(), // Our current use cases of 235 and 034 sparse multiplication always result in non-None value
                 (Some(a), None) => a.clone(),
@@ -129,23 +127,20 @@ fn fp12_multiply_with_line_equal<F: RichField + Extendable<D>, const D: usize>(
     sparse_fp12_multiply(builder, g, line)
 }
 
-fn miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
+fn miller_loop_BLS<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     Q: &G2Target<F, D>,
     P: &G1Target<F, D>,
-    pseudo_binary_encoding: &[i8],
+    pseudo_binary_encoding: &[u8],
 ) -> Fq12Target<F, D> {
     let mut i = pseudo_binary_encoding.len() - 1;
+
     while pseudo_binary_encoding[i] == 0 {
         i -= 1;
     }
     let last_index = i;
-    assert!(pseudo_binary_encoding[i] == 1 || pseudo_binary_encoding[i] == -1);
-    let mut R = if pseudo_binary_encoding[i] == 1 {
-        Q.clone()
-    } else {
-        Q.neg(builder)
-    };
+    assert!(pseudo_binary_encoding[i] == 1);
+    let mut R = Q.clone();
     i -= 1;
 
     // initialize the first line function into Fq12 point
@@ -181,13 +176,9 @@ fn miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
 
         R = R.double(builder);
 
-        assert!(pseudo_binary_encoding[i] <= 1 && pseudo_binary_encoding[i] >= -1);
+        assert!(pseudo_binary_encoding[i] <= 1);
         if pseudo_binary_encoding[i] != 0 {
-            let sign_Q = if pseudo_binary_encoding[i] == 1 {
-                Q.clone()
-            } else {
-                Q.neg(builder)
-            };
+            let sign_Q = Q.clone();
             f = fp12_multiply_with_line_unequal(builder, &f, (&R, &sign_Q), P);
             R = R.add(builder, &sign_Q);
         }
@@ -197,27 +188,13 @@ fn miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
         i -= 1;
     }
 
-    let neg_one: BigUint = Fq::from(-1).into();
-    let k = neg_one / BigUint::from(6u32);
-    let expected_c = Fq2::new(Fq::from(9), Fq::one()).pow(k.to_u64_digits());
-    let c2 = expected_c * expected_c;
-    let c3 = c2 * expected_c;
-    let c2 = Fq2Target::constant(builder, c2);
-    let c3 = Fq2Target::constant(builder, c3);
-
-    let Q_1 = twisted_frobenius(builder, Q, c2.clone(), c3.clone());
-    let neg_Q_2 = neg_twisted_frobenius(builder, &Q_1, c2.clone(), c3.clone());
-    f = fp12_multiply_with_line_unequal(builder, &f, (&R, &Q_1), P);
-    R = R.add(builder, &Q_1);
-    f = fp12_multiply_with_line_unequal(builder, &f, (&R, &neg_Q_2), P);
-
     f
 }
 
-fn multi_miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
+fn multi_miller_loop_BLS<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     pairs: Vec<(&G1Target<F, D>, &G2Target<F, D>)>,
-    pseudo_binary_encoding: &[i8],
+    pseudo_binary_encoding: &[u8],
 ) -> Fq12Target<F, D> {
     let mut i = pseudo_binary_encoding.len() - 1;
     while pseudo_binary_encoding[i] == 0 {
@@ -260,6 +237,7 @@ fn multi_miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
 
     i -= 1;
     let mut r = pairs.iter().map(|pair| pair.1.clone()).collect::<Vec<_>>();
+
     loop {
         if i != last_index - 1 {
             f = f.mul(builder, &f);
@@ -271,7 +249,7 @@ fn multi_miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
             *r = r.double(builder);
         }
 
-        assert!(pseudo_binary_encoding[i] <= 1 && pseudo_binary_encoding[i] >= -1);
+        assert!(pseudo_binary_encoding[i] <= 1);
         if pseudo_binary_encoding[i] != 0 {
             for ((r, neg_b), &(a, b)) in r.iter_mut().zip(neg_b.iter()).zip(pairs.iter()) {
                 let sign_b = if pseudo_binary_encoding[i] == 1 {
@@ -289,51 +267,7 @@ fn multi_miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
         i -= 1;
     }
 
-    let neg_one: BigUint = Fq::from(-1).into();
-    let k = neg_one / BigUint::from(6u32);
-    let expected_c = Fq2::new(Fq::from(9), Fq::one()).pow(k.to_u64_digits());
-
-    let c2 = expected_c * expected_c;
-    let c3 = c2 * expected_c;
-    let c2 = Fq2Target::constant(builder, c2);
-    let c3 = Fq2Target::constant(builder, c3);
-
-    // finish multiplying remaining line functions outside the loop
-    for (r, &(a, b)) in r.iter_mut().zip(pairs.iter()) {
-        let b_1 = twisted_frobenius(builder, &b, c2.clone(), c3.clone());
-        let neg_b_2 = neg_twisted_frobenius(builder, &b_1, c2.clone(), c3.clone());
-        f = fp12_multiply_with_line_unequal(builder, &f, (r, &b_1), a);
-        // *r = (r.clone() + b_1).into();
-        *r = r.add(builder, &b_1);
-        f = fp12_multiply_with_line_unequal(builder, &f, (r, &neg_b_2), a);
-    }
     f
-}
-
-fn twisted_frobenius<F: RichField + Extendable<D>, const D: usize>(
-    builder: &mut CircuitBuilder<F, D>,
-    Q: &G2Target<F, D>,
-    c2: Fq2Target<F, D>,
-    c3: Fq2Target<F, D>,
-) -> G2Target<F, D> {
-    let frob_x = Q.x.conjugate(builder);
-    let frob_y = Q.y.conjugate(builder);
-    let out_x = c2.mul(builder, &frob_x);
-    let out_y = c3.mul(builder, &frob_y);
-    G2Target::new(out_x, out_y)
-}
-
-fn neg_twisted_frobenius<F: RichField + Extendable<D>, const D: usize>(
-    builder: &mut CircuitBuilder<F, D>,
-    Q: &G2Target<F, D>,
-    c2: Fq2Target<F, D>,
-    c3: Fq2Target<F, D>,
-) -> G2Target<F, D> {
-    let frob_x = Q.x.conjugate(builder);
-    let neg_frob_y = Q.y.neg_conjugate(builder);
-    let out_x = c2.mul(builder, &frob_x);
-    let out_y = c3.mul(builder, &neg_frob_y);
-    G2Target::new(out_x, out_y)
 }
 
 pub fn miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
@@ -341,19 +275,19 @@ pub fn miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     Q: &G2Target<F, D>,
     P: &G1Target<F, D>,
 ) -> Fq12Target<F, D> {
-    miller_loop_BN(builder, Q, P, &SIX_U_PLUS_2_NAF)
+    miller_loop_BLS(builder, Q, P, &PSEUDO_BINARY_ENCODING)
 }
 
 pub fn multi_miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     pairs: Vec<(&G1Target<F, D>, &G2Target<F, D>)>,
 ) -> Fq12Target<F, D> {
-    multi_miller_loop_BN(builder, pairs, &SIX_U_PLUS_2_NAF)
+    multi_miller_loop_BLS(builder, pairs, &PSEUDO_BINARY_ENCODING)
 }
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::{G1Affine, G2Affine};
+    use ark_bls12_381::{G1Affine, G2Affine};
     use ark_std::UniformRand;
     use plonky2::{
         field::goldilocks_field::GoldilocksField,
@@ -369,7 +303,7 @@ mod tests {
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
         miller_loop_target::multi_miller_loop_circuit,
     };
-    use plonky2_bn254::{
+    use plonky2_bls12_381::{
         curves::{g1curve_target::G1Target, g2curve_target::G2Target},
         fields::fq12_target::Fq12Target,
     };
@@ -385,7 +319,7 @@ mod tests {
         let P = G1Affine::rand(rng);
         let r_expected = miller_loop_native(&Q, &P);
 
-        let config = CircuitConfig::standard_ecc_config();
+        let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
 
         let Q_t = G2Target::constant(&mut builder, Q);
@@ -412,7 +346,7 @@ mod tests {
 
         let r_expected = multi_miller_loop_native(vec![(&P0, &Q0), (&P1, &Q1)]);
 
-        let config = CircuitConfig::standard_ecc_config();
+        let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
 
         let Q0_t = G2Target::constant(&mut builder, Q0);
