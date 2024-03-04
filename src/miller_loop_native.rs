@@ -115,7 +115,6 @@ fn miller_loop_BLS_native(Q: &G2Affine, P: &G1Affine, pseudo_binary_encoding: &[
 
     while pseudo_binary_encoding[i] == 0 {
         i -= 1;
-        println!("ASDASDASIUDHKDIHFKDJHFG================================");
     }
     let last_index = i;
     assert!(pseudo_binary_encoding[i] == 1);

@@ -66,7 +66,7 @@ mod test {
         let q = G2Affine::rand(rng);
         let output = pairing(p, q);
 
-        let config = CircuitConfig::standard_ecc_config();
+        let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
         let p_t = G1Target::constant(&mut builder, p);
         let q_t = G2Target::constant(&mut builder, q);

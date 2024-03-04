@@ -213,7 +213,7 @@ mod tests {
         let a = Fq12::rand(rng);
         let b_expected = frobenius_map_native(a.into(), power);
 
-        let config = CircuitConfig::standard_ecc_config();
+        let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
         let a_t = Fq12Target::constant(&mut builder, a);
         let b_t = frobenius_map(&mut builder, &a_t, power);
@@ -234,7 +234,7 @@ mod tests {
         let P = G1Affine::rand(rng);
         let input = miller_loop_native(&Q, &P);
 
-        let config = CircuitConfig::standard_ecc_config();
+        let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
         let input_t = Fq12Target::constant(&mut builder, input.into());
         let output = final_exp_circuit::<F, C, D>(&mut builder, input_t);
