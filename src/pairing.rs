@@ -1,4 +1,4 @@
-use ark_bn254::{Fq12, G1Affine, G2Affine};
+use ark_bls12_381::{Fq12, G1Affine, G2Affine};
 use plonky2::{
     field::extension::Extendable,
     hash::hash_types::RichField,
@@ -7,7 +7,7 @@ use plonky2::{
         config::{AlgebraicHasher, GenericConfig},
     },
 };
-use plonky2_bn254::{
+use plonky2_bls12_381::{
     curves::{g1curve_target::G1Target, g2curve_target::G2Target},
     fields::fq12_target::Fq12Target,
 };
@@ -41,7 +41,7 @@ where
 mod test {
     use std::time::Instant;
 
-    use ark_bn254::{G1Affine, G2Affine};
+    use ark_bls12_381::{G1Affine, G2Affine};
     use ark_std::UniformRand;
     use plonky2::{
         field::goldilocks_field::GoldilocksField,
@@ -51,7 +51,7 @@ mod test {
             config::PoseidonGoldilocksConfig,
         },
     };
-    use plonky2_bn254::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
+    use plonky2_bls12_381::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
 
     use crate::pairing::{pairing, pairing_circuit};
 

@@ -1,12 +1,12 @@
 [package]
-name = "plonky2-bn254-pairing"
+name = "plonky2-bls12-381-pairing"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ark-bn254 = "0.4.0"
+ark-bls12-381 = "0.4.0"
 ark-ec = "0.4.2"
 ark-ff = "0.4.2"
 ark-std = "0.4.0"
@@ -24,5 +24,5 @@ plonky2 = {git="https://github.com/InternetMaximalism/plonky2", rev="541e127"}
 plonky2_u32={git="https://github.com/InternetMaximalism/plonky2", rev="541e127"}
 plonky2_ecdsa={git="https://github.com/InternetMaximalism/plonky2", rev="541e127"}
 starky = {git="https://github.com/InternetMaximalism/plonky2", rev="541e127"}
-plonky2-bn254={git="https://github.com/qope/plonky2-bn254.git", rev="d616d57"}
+plonky2-bls12-381={ git = "https://github.com/metacraft-labs/plonky2-bn254.git" }
 starky-bn254={git="http://github.com/qope/starky-bn254", rev="2165be0"}

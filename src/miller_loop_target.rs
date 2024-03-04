@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use crate::miller_loop_native::SIX_U_PLUS_2_NAF;
-use ark_bn254::{Fq, Fq2};
+use crate::miller_loop_native::PSEUDO_BINARY_ENCODING;
+use ark_bls12_381::{Fq, Fq2};
 use ark_ff::Field;
 use ark_std::One;
 use num_bigint::BigUint;
@@ -8,9 +8,9 @@ use plonky2::{
     field::extension::Extendable, hash::hash_types::RichField,
     plonk::circuit_builder::CircuitBuilder,
 };
-use plonky2_bn254::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
-use plonky2_bn254::fields::fq12_target::Fq12Target;
-use plonky2_bn254::fields::{fq2_target::Fq2Target, fq_target::FqTarget};
+use plonky2_bls12_381::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
+use plonky2_bls12_381::fields::fq12_target::Fq12Target;
+use plonky2_bls12_381::fields::{fq2_target::Fq2Target, fq_target::FqTarget};
 
 const XI_0: usize = 9;
 
@@ -133,14 +133,14 @@ fn miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     Q: &G2Target<F, D>,
     P: &G1Target<F, D>,
-    pseudo_binary_encoding: &[i8],
+    pseudo_binary_encoding: &[u8],
 ) -> Fq12Target<F, D> {
     let mut i = pseudo_binary_encoding.len() - 1;
     while pseudo_binary_encoding[i] == 0 {
         i -= 1;
     }
     let last_index = i;
-    assert!(pseudo_binary_encoding[i] == 1 || pseudo_binary_encoding[i] == -1);
+    assert!(pseudo_binary_encoding[i] == 1 || pseudo_binary_encoding[i] == 0);
     let mut R = if pseudo_binary_encoding[i] == 1 {
         Q.clone()
     } else {
@@ -181,7 +181,7 @@ fn miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
 
         R = R.double(builder);
 
-        assert!(pseudo_binary_encoding[i] <= 1 && pseudo_binary_encoding[i] >= -1);
+        assert!(pseudo_binary_encoding[i] <= 1);
         if pseudo_binary_encoding[i] != 0 {
             let sign_Q = if pseudo_binary_encoding[i] == 1 {
                 Q.clone()
@@ -217,7 +217,7 @@ fn miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
 fn multi_miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     pairs: Vec<(&G1Target<F, D>, &G2Target<F, D>)>,
-    pseudo_binary_encoding: &[i8],
+    pseudo_binary_encoding: &[u8],
 ) -> Fq12Target<F, D> {
     let mut i = pseudo_binary_encoding.len() - 1;
     while pseudo_binary_encoding[i] == 0 {
@@ -271,7 +271,7 @@ fn multi_miller_loop_BN<F: RichField + Extendable<D>, const D: usize>(
             *r = r.double(builder);
         }
 
-        assert!(pseudo_binary_encoding[i] <= 1 && pseudo_binary_encoding[i] >= -1);
+        assert!(pseudo_binary_encoding[i] <= 1);
         if pseudo_binary_encoding[i] != 0 {
             for ((r, neg_b), &(a, b)) in r.iter_mut().zip(neg_b.iter()).zip(pairs.iter()) {
                 let sign_b = if pseudo_binary_encoding[i] == 1 {
@@ -341,19 +341,19 @@ pub fn miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     Q: &G2Target<F, D>,
     P: &G1Target<F, D>,
 ) -> Fq12Target<F, D> {
-    miller_loop_BN(builder, Q, P, &SIX_U_PLUS_2_NAF)
+    miller_loop_BN(builder, Q, P, &PSEUDO_BINARY_ENCODING)
 }
 
 pub fn multi_miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     pairs: Vec<(&G1Target<F, D>, &G2Target<F, D>)>,
 ) -> Fq12Target<F, D> {
-    multi_miller_loop_BN(builder, pairs, &SIX_U_PLUS_2_NAF)
+    multi_miller_loop_BN(builder, pairs, &PSEUDO_BINARY_ENCODING)
 }
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::{G1Affine, G2Affine};
+    use ark_bls12_381::{G1Affine, G2Affine};
     use ark_std::UniformRand;
     use plonky2::{
         field::goldilocks_field::GoldilocksField,
@@ -369,7 +369,7 @@ mod tests {
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
         miller_loop_target::multi_miller_loop_circuit,
     };
-    use plonky2_bn254::{
+    use plonky2_bls12_381::{
         curves::{g1curve_target::G1Target, g2curve_target::G2Target},
         fields::fq12_target::Fq12Target,
     };

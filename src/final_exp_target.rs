@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use ark_bn254::{Fq, Fq12, Fq2};
+use ark_bls12_381::{Fq, Fq12, Fq2};
 use ark_ff::{Field, One, Zero};
 use num_bigint::BigUint;
 
@@ -12,7 +12,7 @@ use plonky2::{
     },
 };
 
-use plonky2_bn254::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
+use plonky2_bls12_381::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
 use starky_bn254::{circuits::fq12_exp_u64_circuit, input_target::Fq12ExpU64InputTarget};
 
 use crate::final_exp_native::{frob_coeffs, BN_X};
@@ -109,6 +109,7 @@ where
     let y5 = mx2.confugate(builder);
     // let mx3 = pow(builder, &mx2, BN_X);
     let mx3 = Fq12Target::empty(builder);
+    let x = mx2.clone();
     exp_inputs.push(Fq12ExpU64InputTarget {
         x: mx2.clone(),
         offset,
@@ -180,7 +181,7 @@ where
 mod tests {
     use std::time::Instant;
 
-    use ark_bn254::{Fq12, G1Affine, G2Affine};
+    use ark_bls12_381::{Fq12, G1Affine, G2Affine};
     use ark_std::UniformRand;
     use rand::Rng;
 
@@ -199,7 +200,7 @@ mod tests {
         final_exp_native::{final_exp_native, frobenius_map_native},
         final_exp_target::final_exp_circuit,
     };
-    use plonky2_bn254::fields::fq12_target::Fq12Target;
+    use plonky2_bls12_381::fields::fq12_target::Fq12Target;
 
     type F = GoldilocksField;
     type C = PoseidonGoldilocksConfig;
