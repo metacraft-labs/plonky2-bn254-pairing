@@ -187,7 +187,7 @@ pub fn frob_coeffs(index: usize) -> Fq2 {
     let num: BigUint = modulus.pow(index as u32) - 1u64;
     let k: BigUint = num.div(6u64);
 
-    let c = Fq2::new(Fq::from(9), Fq::one());
+    let c = Fq2::new(Fq::from(1), Fq::one());
     c.pow(k.to_u64_digits())
 }
 
@@ -221,7 +221,6 @@ mod tests {
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num_bigint::BigUint;
-    use starky_bn254::utils::biguint_to_bits;
 
     use crate::miller_loop_native::{miller_loop_native, multi_miller_loop_native};
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
@@ -279,8 +278,8 @@ mod tests {
         let exp = (p.pow(12) - 1u32) / r;
         let final_x2 = x.pow(&exp.to_u64_digits());
 
-        let exp_bits = biguint_to_bits(&exp, 256 * 16);
-        dbg!(exp_bits.len());
+        // let exp_bits = biguint_to_bits(&exp, 256 * 16);
+        // dbg!(exp_bits.len());
 
         assert_eq!(final_x, final_x2);
     }

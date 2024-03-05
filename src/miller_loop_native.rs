@@ -36,7 +36,7 @@ fn sparse_line_function_equal_native(Q: &G2Affine, P: &G1Affine) -> Vec<Option<F
     let y_sq = y * y;
     let two_y_sq = y_sq * Fq2::from(2);
     let out0_left = three_x_cu - two_y_sq;
-    let out0 = out0_left * Fq2::new(Fq::from(1), Fq::one()); // Fq::one() concern?
+    let out0 = out0_left * Fq2::new(Fq::from(1), Fq::one());
     let x_sq_px: Fq2 = x_sq * Fq2::new(P.x, Fq::zero());
     let out4 = x_sq_px * Fq2::from(-3);
     let y_py = y * Fq2::new(P.y, Fq::zero());
