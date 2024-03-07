@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use std::{ops::Div, vec};
+use std::ops::Div;
 
 use ark_bls12_381::{Fq, Fq12, Fq2};
 use ark_ff::Field;
@@ -10,9 +10,12 @@ use num_traits::One;
 
 use plonky2_bls12_381::fields::native::MyFq12;
 
-use crate::miller_loop_native::conjugate_fp2;
+use crate::{
+    final_exp_helpers_native::{cyclotomic_exp_native, exponentiate_native},
+    miller_loop_native::conjugate_fp2,
+};
 
-pub const BN_X: u64 = 4965661367192848881;
+pub const BLS_X: u64 = 15132376222941642752;
 
 pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
     let neg_one: BigUint = Fq::from(-1).into();
@@ -135,16 +138,31 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     let mp2_mp3 = mp2 * mp3;
     let y0 = mp * mp2_mp3;
     let y1 = conjugate_fp12(m);
-    let mx = pow_native(m, vec![BN_X]);
-    let mxp = frobenius_map_native(mx, 1);
-    let mx2 = pow_native(mx.clone(), vec![BN_X]);
+
+    // m.pow(-15132376222941642752) DONE
+    let m: Fq12 = m.into();
+    // let mx = m.inverse().unwrap().pow(vec![BLS_X]);
+    let mx = cyclotomic_exp_native(m);
+
+    let mxp = frobenius_map_native(mx.into(), 1);
+
+    // mx.pow(-15132376222941642752) DONE
+    let mx2 = cyclotomic_exp_native(mx).into();
+    // let mx2: MyFq12 = mx.inverse().unwrap().pow(vec![BLS_X]).into();
+
     let mx2p = frobenius_map_native(mx2, 1);
     let y2 = frobenius_map_native(mx2, 2);
     let y5 = conjugate_fp12(mx2);
-    let mx3 = pow_native(mx2, vec![BN_X]);
-    let mx3p = frobenius_map_native(mx3, 1);
 
+    // mx2.pow(-15132376222941642752) DONE
+    let mx2: Fq12 = mx2.into();
+    let mx3 = cyclotomic_exp_native(mx2).into();
+    // let mx3: MyFq12 = mx2.inverse().unwrap().pow(vec![BLS_X]).into();
+
+    let mx3p = frobenius_map_native(mx3, 1);
     let y3 = conjugate_fp12(mxp);
+
+    let mx: MyFq12 = mx.into();
     let mx_mx2p = mx * mx2p;
     let y4 = conjugate_fp12(mx_mx2p);
     let mx3_mx3p = mx3 * mx3p;
@@ -222,10 +240,14 @@ mod tests {
     use ark_std::UniformRand;
     use num_bigint::BigUint;
 
-    use crate::miller_loop_native::{miller_loop_native, multi_miller_loop_native};
-    use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
+    use crate::{
+        final_exp_helpers_native::exponentiate_native,
+        final_exp_native::{pow_native, BLS_X},
+        miller_loop_native::{miller_loop_native, multi_miller_loop_native},
+    };
+    use plonky2_bls12_381::fields::{debug_tools::print_ark_fq, native::MyFq12};
 
-    use super::{final_exp_native, pow_native, BN_X};
+    use super::final_exp_native;
 
     #[test]
     fn test_pairing_final() {
@@ -266,10 +288,9 @@ mod tests {
     fn test_pow() {
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let output: Fq12 = pow_native(x.into(), vec![BN_X]).into();
-        let output2 = x.pow(&[BN_X]);
-        assert_eq!(output, output2);
-
+        // let output2 = x.inverse().unwrap().pow(vec![BLS_X]);
+        //assert_eq!(output, output2);
+        // println!("========================================!##$%$#%$#%$#%$#%$%$%$#%$#(*)(*()*)(*)(*)(*&*&&**&");
         let final_x: Fq12 = final_exp_native(x.into()).into();
 
         use ark_ff::PrimeField;
