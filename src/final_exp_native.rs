@@ -15,6 +15,7 @@ use crate::{
     miller_loop_native::conjugate_fp2,
 };
 
+pub const BN_X: u64 = 4965661367192848881;
 pub const BLS_X: u64 = 15132376222941642752;
 
 pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
@@ -142,13 +143,15 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     // m.pow(-15132376222941642752) DONE
     let m: Fq12 = m.into();
     // let mx = m.inverse().unwrap().pow(vec![BLS_X]);
-    let mx = cyclotomic_exp_native(m);
+    let mx = pow_native(m.into(), vec![BN_X]);
+    // let mx = cyclotomic_exp_native(m);
 
     let mxp = frobenius_map_native(mx.into(), 1);
 
     // mx.pow(-15132376222941642752) DONE
-    let mx2 = cyclotomic_exp_native(mx).into();
+    // let mx2 = cyclotomic_exp_native(mx).into();
     // let mx2: MyFq12 = mx.inverse().unwrap().pow(vec![BLS_X]).into();
+    let mx2 = pow_native(mx.into(), vec![BN_X]);
 
     let mx2p = frobenius_map_native(mx2, 1);
     let y2 = frobenius_map_native(mx2, 2);
@@ -156,8 +159,9 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
 
     // mx2.pow(-15132376222941642752) DONE
     let mx2: Fq12 = mx2.into();
-    let mx3 = cyclotomic_exp_native(mx2).into();
+    // let mx3 = cyclotomic_exp_native(mx2).into();
     // let mx3: MyFq12 = mx2.inverse().unwrap().pow(vec![BLS_X]).into();
+    let mx3 = pow_native(mx2.into(), vec![BN_X]);
 
     let mx3p = frobenius_map_native(mx3, 1);
     let y3 = conjugate_fp12(mxp);
@@ -205,7 +209,7 @@ pub fn frob_coeffs(index: usize) -> Fq2 {
     let num: BigUint = modulus.pow(index as u32) - 1u64;
     let k: BigUint = num.div(6u64);
 
-    let c = Fq2::new(Fq::from(1), Fq::one());
+    let c = Fq2::new(Fq::from(9), Fq::one());
     c.pow(k.to_u64_digits())
 }
 
@@ -286,17 +290,25 @@ mod tests {
 
     #[test]
     fn test_pow() {
+        let y = Fq12::from(2);
+        let _y = Fq12::from(8);
+        let _y = _y.inverse().unwrap();
+        let y = y.mul(_y); // 2/8 -> 1/4
+        let z = Fq12::from(2);
+        let _z = 2;
+        let z = z.inverse().unwrap().pow(vec![_z]); // 1/2 ^ 2 = 1/4
+        assert_eq!(z, y);
+        println!("========================================!##$%$#%$#%$#%$#%$%$%$#%$#(*)(*()*)(*)(*)(*&*&&**&");
+        println!("========================================!##$%$#%$#%$#%$#%$%$%$#%$#(*)(*()*)(*)(*)(*&*&&**&");
+        println!("========================================!##$%$#%$#%$#%$#%$%$%$#%$#(*)(*()*)(*)(*)(*&*&&**&");
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        // let output2 = x.inverse().unwrap().pow(vec![BLS_X]);
-        //assert_eq!(output, output2);
-        // println!("========================================!##$%$#%$#%$#%$#%$%$%$#%$#(*)(*()*)(*)(*)(*&*&&**&");
         let final_x: Fq12 = final_exp_native(x.into()).into();
 
         use ark_ff::PrimeField;
         let p: BigUint = Fq::MODULUS.into();
         let r: BigUint = Fr::MODULUS.into();
-        let exp = (p.pow(12) - 1u32) / r;
+        let exp = (p.pow(12) - 1u64) / r;
         let final_x2 = x.pow(&exp.to_u64_digits());
 
         // let exp_bits = biguint_to_bits(&exp, 256 * 16);

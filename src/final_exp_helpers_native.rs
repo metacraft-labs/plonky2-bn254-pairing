@@ -1,7 +1,10 @@
 use std::ops::Mul;
 
-use ark_bls12_381::{Fq12, Fq2, Fq6};
-use num::One;
+use ark_bls12_381::{Fq, Fq12, Fq12Config, Fq2, Fq6, Fq6Config};
+use ark_ff::{Fp12Config, Fp6Config};
+use num::{One, Zero};
+
+use crate::miller_loop_native::conjugate_fp2;
 const BLS_X: u64 = 0xd201_0000_0001_0000;
 
 pub fn mul_by_nonresidue_native(a: Fq2) -> Fq2 {
@@ -97,6 +100,47 @@ pub fn cyclotomic_exp_native(f: Fq12) -> Fq12 {
 
     *tmp.conjugate_in_place()
 }
+
+pub fn fq6_frobenius_map(f: Fq6) -> Fq6 {
+    // FROBENIUS_COEFF_FP6_C1
+    let c0 = conjugate_fp2(f.c0);
+    let c1 = conjugate_fp2(f.c1);
+    let c2 = conjugate_fp2(f.c2);
+
+    // c1 = c1 * (u + 1)^((p - 1) / 3)
+    let c1 = c1 * Fq6Config::FROBENIUS_COEFF_FP6_C1[1];
+
+    // c2 = c2 * (u + 1)^((2p - 2) / 3)
+    let c2 = c2 * Fq6Config::FROBENIUS_COEFF_FP6_C2[1];
+
+    Fq6 { c0, c1, c2 }
+}
+
+pub fn frobenius_map(f: Fq12) -> Fq12 {
+    let c0 = fq6_frobenius_map(f.c0);
+    let c1 = fq6_frobenius_map(f.c1);
+
+    // c1 = c1 * (u + 1)^((p - 1) / 6)
+    let c1 = c1
+        * Fq6::new(
+            Fq12Config::FROBENIUS_COEFF_FP12_C1[1],
+            Fq2::zero(),
+            Fq2::zero(),
+        );
+
+    Fq12 { c0, c1 }
+}
+
+pub fn final_exponentiation_native(f: Fq12) {
+    let t0 = frobenius_map(f);
+    let t0 = frobenius_map(t0);
+    let t0 = frobenius_map(t0);
+    let t0 = frobenius_map(t0);
+    let t0 = frobenius_map(t0);
+    let mut t0 = frobenius_map(t0);
+}
+
+pub fn f_conversion_to_gt(f: Fq12) {}
 
 // exp raises element by x = -15132376222941642752
 pub fn exponentiate_native(a: Fq12) -> Fq12 {
