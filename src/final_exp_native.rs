@@ -143,8 +143,8 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     // m.pow(-15132376222941642752) DONE
     let m: Fq12 = m.into();
     // let mx = m.inverse().unwrap().pow(vec![BLS_X]);
-    let mx = pow_native(m.into(), vec![BN_X]);
-    // let mx = cyclotomic_exp_native(m);
+    // let mx = pow_native(m.into(), vec![BN_X]);
+    let mx = cyclotomic_exp_native(m);
 
     let mxp = frobenius_map_native(mx.into(), 1);
 
@@ -160,8 +160,8 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     // mx2.pow(-15132376222941642752) DONE
     let mx2: Fq12 = mx2.into();
     // let mx3 = cyclotomic_exp_native(mx2).into();
-    // let mx3: MyFq12 = mx2.inverse().unwrap().pow(vec![BLS_X]).into();
-    let mx3 = pow_native(mx2.into(), vec![BN_X]);
+    let mx3: MyFq12 = mx2.inverse().unwrap().pow(vec![BLS_X]).into();
+    // let mx3 = pow_native(mx2.into(), vec![BN_X]);
 
     let mx3p = frobenius_map_native(mx3, 1);
     let y3 = conjugate_fp12(mxp);
@@ -245,7 +245,7 @@ mod tests {
     use num_bigint::BigUint;
 
     use crate::{
-        final_exp_helpers_native::exponentiate_native,
+        final_exp_helpers_native::{exponentiate_native, final_exponentiation_native},
         final_exp_native::{pow_native, BLS_X},
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
     };
@@ -303,10 +303,11 @@ mod tests {
         println!("========================================!##$%$#%$#%$#%$#%$%$%$#%$#(*)(*()*)(*)(*)(*&*&&**&");
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let final_x: Fq12 = final_exp_native(x.into()).into();
+        let final_x: Fq12 = final_exponentiation_native(x.into()).into();
 
         use ark_ff::PrimeField;
         let p: BigUint = Fq::MODULUS.into();
+        println!("p is: {:?}", p);
         let r: BigUint = Fr::MODULUS.into();
         let exp = (p.pow(12) - 1u64) / r;
         let final_x2 = x.pow(&exp.to_u64_digits());
