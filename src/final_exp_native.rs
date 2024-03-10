@@ -4,6 +4,7 @@ use std::{ops::Div, vec};
 use ark_bls12_381::{Fq, Fq12, Fq2};
 use ark_ff::Field;
 use ark_std::Zero;
+use group::Wnaf;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::One;
@@ -12,7 +13,7 @@ use plonky2_bls12_381::fields::native::MyFq12;
 
 use crate::miller_loop_native::conjugate_fp2;
 
-pub const BN_X: u64 = 4965661367192848881;
+pub const BLS_X: u64 = 15132376222941642752;
 
 pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
     let neg_one: BigUint = Fq::from(-1).into();
@@ -80,6 +81,7 @@ pub fn pow_native(a: MyFq12, exp: Vec<u64>) -> MyFq12 {
             }
         }
     }
+    // println!("res:  {:?}", res);
     res
 }
 
@@ -87,24 +89,30 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
     // https://en.wikipedia.org/wiki/Non-adjacent_form
     // NAF for exp:
     let mut naf: Vec<i8> = Vec::with_capacity(64 * exp.len());
+    println!("exp.len(): {:?}", exp.len());
     let len = exp.len();
 
     // generate the NAF for exp
     for idx in 0..len {
         let mut e: u64 = exp[idx];
+        println!("e:  {:?}", e);
         for _ in 0..64 {
+            println!("e & 1:  {:?}", e & 1);
             if e & 1 == 1 {
                 let z = 2i8 - (e % 4) as i8;
-                e /= 2;
-                if z == -1 {
-                    e += 1;
-                }
+                // e -= z as u64;
+                // Is this useless since our constant in NAF form doesn't contain negative ones?
+                // if z == -1 {
+                //     e += 1;
+                // }
                 naf.push(z);
             } else {
                 naf.push(0);
-                e /= 2;
             }
+            // Moving this outside the if and else statements since we are not checking if z == -1
+            e /= 2;
         }
+        println!("e:  {:?}", e);
         if e != 0 {
             assert_eq!(e, 1);
             let mut j = idx + 1;
@@ -124,10 +132,17 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
         assert!(exp[len] == 1);
         naf.push(1);
     }
+    // Still fails when hardcoded 1 instead of -1
+    // let _naf_len = naf.len();
+    // let mut naf = naf;
+    // naf[_naf_len - 2] = 1;
+    println!("naf:  {:?}", naf);
+
     naf
 }
 
 fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
+    // let result = Wnaf::new().scalar(&scalar).base(base);
     let mp = frobenius_map_native(m, 1);
     let mp2 = frobenius_map_native(m, 2);
     let mp3 = frobenius_map_native(m, 3);
@@ -135,13 +150,19 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     let mp2_mp3 = mp2 * mp3;
     let y0 = mp * mp2_mp3;
     let y1 = conjugate_fp12(m);
-    let mx = pow_native(m, vec![BN_X]);
+    let ___m___: Fq12 = m.into();
+    let ___m___: MyFq12 = ___m___.inverse().unwrap().into();
+    let mx = pow_native(___m___, vec![BLS_X]);
     let mxp = frobenius_map_native(mx, 1);
-    let mx2 = pow_native(mx.clone(), vec![BN_X]);
+    let ___mx___: Fq12 = mx.into();
+    let ___mx___: MyFq12 = ___mx___.inverse().unwrap().into();
+    let mx2 = pow_native(___mx___, vec![BLS_X]);
     let mx2p = frobenius_map_native(mx2, 1);
     let y2 = frobenius_map_native(mx2, 2);
     let y5 = conjugate_fp12(mx2);
-    let mx3 = pow_native(mx2, vec![BN_X]);
+    let ___mx2___: Fq12 = mx2.into();
+    let ___mx2___: MyFq12 = ___mx2___.inverse().unwrap().into();
+    let mx3 = pow_native(___mx2___, vec![BLS_X]);
     let mx3p = frobenius_map_native(mx3, 1);
 
     let y3 = conjugate_fp12(mxp);
@@ -222,10 +243,13 @@ mod tests {
     use ark_std::UniformRand;
     use num_bigint::BigUint;
 
-    use crate::miller_loop_native::{miller_loop_native, multi_miller_loop_native};
+    use crate::{
+        final_exp_native::BLS_X,
+        miller_loop_native::{miller_loop_native, multi_miller_loop_native},
+    };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
-    use super::{final_exp_native, pow_native, BN_X};
+    use super::{final_exp_native, pow_native};
 
     #[test]
     fn test_pairing_final() {
@@ -266,8 +290,8 @@ mod tests {
     fn test_pow() {
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let output: Fq12 = pow_native(x.into(), vec![BN_X]).into();
-        let output2 = x.pow(&[BN_X]);
+        let output: Fq12 = pow_native(x.into(), vec![BLS_X]).into();
+        let output2 = x.pow(&[BLS_X]);
         assert_eq!(output, output2);
 
         let final_x: Fq12 = final_exp_native(x.into()).into();

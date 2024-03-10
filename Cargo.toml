@@ -16,6 +16,7 @@ rand = "0.8.5"
 num = "0.4.0"
 serde = { version = "1.0.160", features = ["derive"] }
 itertools = "0.10.5"
+group = "0.13.0"
 anyhow = "1.0.71"
 hex = "0.4.3"
 bitvec = "1"
