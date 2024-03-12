@@ -12,7 +12,7 @@ use plonky2_bls12_381::fields::native::MyFq12;
 
 use crate::miller_loop_native::conjugate_fp2;
 
-pub const BN_X: u64 = 4965661367192848881;
+pub const BLS_X: u64 = 15132376222941642752;
 
 pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
     let neg_one: BigUint = Fq::from(-1).into();
@@ -53,10 +53,39 @@ pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
     }
 }
 
+pub fn experimental_pow(a: MyFq12, exp: Vec<u64>) -> MyFq12 {
+    let mut res = a.clone();
+    let mut is_started = false;
+    let naf = get_naf(exp);
+
+    for &z in naf.iter().rev() {
+        if is_started {
+            res = res * res;
+        }
+
+        if z != 0 {
+            assert!(z == 1 || z == -1);
+            if is_started {
+                res = res * a;
+            } else {
+                assert_eq!(z, 1);
+                is_started = true;
+            }
+        }
+    }
+
+    res
+}
+
 pub fn pow_native(a: MyFq12, exp: Vec<u64>) -> MyFq12 {
     let mut res = a.clone();
     let mut is_started = false;
     let naf = get_naf(exp);
+    // let naf = [
+    //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+    //     1, 0, 1, 1,
+    // ];
 
     for &z in naf.iter().rev() {
         if is_started {
@@ -95,17 +124,20 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
         for _ in 0..64 {
             if e & 1 == 1 {
                 let z = 2i8 - (e % 4) as i8;
-                e /= 2;
-                if z == -1 {
-                    e += 1;
-                }
+                // e -= z as u64;
+                // Is this useless since our constant in NAF form doesn't contain negative ones?
+                // if z == -1 {
+                //     e += 1;
+                // }
                 naf.push(z);
             } else {
                 naf.push(0);
-                e /= 2;
             }
+            // Moving this outside the if and else statements since we are not checking if z == -1
+            e /= 2;
         }
         if e != 0 {
+            println!("enters e != 0");
             assert_eq!(e, 1);
             let mut j = idx + 1;
             while j < exp.len() && exp[j] == u64::MAX {
@@ -120,10 +152,16 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
         }
     }
     if exp.len() != len {
+        println!("enters exp.len() != len");
         assert_eq!(len, exp.len() + 1);
         assert!(exp[len] == 1);
         naf.push(1);
     }
+    // Still fails when hardcoded 1 instead of -1
+    // let _naf_len = naf.len();
+    // let mut naf = naf;
+    // naf[_naf_len - 2] = 1;
+
     naf
 }
 
@@ -135,14 +173,18 @@ fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
     let mp2_mp3 = mp2 * mp3;
     let y0 = mp * mp2_mp3;
     let y1 = conjugate_fp12(m);
-    let mx = pow_native(m, vec![BN_X]);
+    let m: Fq12 = m.into();
+    let mx = experimental_pow(m.inverse().unwrap().into(), vec![BLS_X]);
     let mxp = frobenius_map_native(mx, 1);
-    let mx2 = pow_native(mx.clone(), vec![BN_X]);
+    let mx: Fq12 = mx.into();
+    let mx2 = experimental_pow(mx.inverse().unwrap().into(), vec![BLS_X]);
     let mx2p = frobenius_map_native(mx2, 1);
     let y2 = frobenius_map_native(mx2, 2);
     let y5 = conjugate_fp12(mx2);
-    let mx3 = pow_native(mx2, vec![BN_X]);
+    let mx2: Fq12 = mx2.into();
+    let mx3 = experimental_pow(mx2.inverse().unwrap().into(), vec![BLS_X]);
     let mx3p = frobenius_map_native(mx3, 1);
+    let mx: MyFq12 = mx.into();
 
     let y3 = conjugate_fp12(mxp);
     let mx_mx2p = mx * mx2p;
@@ -220,12 +262,16 @@ mod tests {
     use ark_ec::AffineRepr;
     use ark_ff::Field;
     use ark_std::UniformRand;
+    use num::One;
     use num_bigint::BigUint;
 
-    use crate::miller_loop_native::{miller_loop_native, multi_miller_loop_native};
+    use crate::{
+        final_exp_native::{experimental_pow, BLS_X},
+        miller_loop_native::{miller_loop_native, multi_miller_loop_native},
+    };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
-    use super::{final_exp_native, pow_native, BN_X};
+    use super::final_exp_native;
 
     #[test]
     fn test_pairing_final() {
@@ -266,10 +312,9 @@ mod tests {
     fn test_pow() {
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let output: Fq12 = pow_native(x.into(), vec![BN_X]).into();
-        let output2 = x.pow(&[BN_X]);
+        let output: Fq12 = experimental_pow(x.into(), vec![BLS_X]).into();
+        let output2 = x.pow(&[BLS_X]);
         assert_eq!(output, output2);
-
         let final_x: Fq12 = final_exp_native(x.into()).into();
 
         use ark_ff::PrimeField;
@@ -278,9 +323,40 @@ mod tests {
         let exp = (p.pow(12) - 1u32) / r;
         let final_x2 = x.pow(&exp.to_u64_digits());
 
-        // let exp_bits = biguint_to_bits(&exp, 256 * 16);
-        // dbg!(exp_bits.len());
+        //
+        let bln = x + Fq12::from(1000000000) - x;
+        let final_one2 = bln.pow(&exp.to_u64_digits());
+        let final_one: Fq12 = final_exp_native(bln.into()).into();
+        assert_eq!(final_one, final_one2); // final_exp(1000000000) == 1000000000 ^ ((p ^ 12) - 1) / r)
 
-        assert_eq!(final_x, final_x2);
+        assert_eq!(final_x, final_x2); // fails when x is large number
+    }
+
+    #[test]
+    fn test_partial_pow() {
+        // 1 / (2 ^ 15132376222941642752)
+        let two = Fq12::from(2);
+        let two_pow_blsx: Fq12 = experimental_pow(two.into(), vec![BLS_X]).into();
+        let two_pow_blsx_inv = two_pow_blsx.inverse().unwrap();
+        //
+
+        // (1 / 2) ^ 15132376222941642752
+        let two = Fq12::from(2);
+        let inv_two = two.inverse().unwrap();
+        let inv_two_pow_blsx: Fq12 = experimental_pow(inv_two.into(), vec![BLS_X]).into();
+
+        assert_eq!(two_pow_blsx_inv, inv_two_pow_blsx); // 1 / (2 ^ 15132376222941642752) == (1 / 2) ^ 15132376222941642752
+
+        // 1 / (32 ^ 1)
+        let _32 = Fq12::from(32);
+        let _32_inv = _32
+            .pow(&(BigUint::one()).to_u64_digits())
+            .inverse()
+            .unwrap();
+
+        // (1 / 2) ^ 5
+        let inv_2_pow_5: Fq12 = experimental_pow(inv_two.into(), vec![5]).into();
+
+        assert_eq!(_32_inv, inv_2_pow_5); // 1 / (32 ^ 1) == (1 / 2) ^ 5
     }
 }
