@@ -116,7 +116,6 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
     // https://en.wikipedia.org/wiki/Non-adjacent_form
     // NAF for exp:
     let mut naf: Vec<i8> = Vec::with_capacity(64 * exp.len());
-    println!("exp.len(): {:?}", exp.len());
     let len = exp.len();
 
     // generate the NAF for exp
@@ -321,7 +320,7 @@ mod tests {
         use ark_ff::PrimeField;
         let p: BigUint = Fq::MODULUS.into();
         let r: BigUint = Fr::MODULUS.into();
-        let exp = (p.pow(12) - 1u32) / r.clone();
+        let exp = (p.pow(12) - 1u32) / r;
         let final_x2 = x.pow(&exp.to_u64_digits());
 
         //
