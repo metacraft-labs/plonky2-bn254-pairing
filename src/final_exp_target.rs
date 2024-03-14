@@ -13,9 +13,9 @@ use plonky2::{
 };
 
 use plonky2_bls12_381::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
-use starky_bn254::{circuits::fq12_exp_u64_circuit, input_target::Fq12ExpU64InputTarget};
+// use starky_bn254::{circuits::fq12_exp_u64_circuit, input_target::Fq12ExpU64InputTarget};
 
-use crate::final_exp_native::{frob_coeffs, BLS_X};
+use crate::final_exp_native::{frob_coeffs, get_naf, BLS_X};
 
 fn frobenius_map<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
@@ -62,19 +62,40 @@ fn frobenius_map<F: RichField + Extendable<D>, const D: usize>(
     }
 }
 
-fn hard_part_BN<
-    F: RichField + Extendable<D>,
-    C: GenericConfig<D, F = F> + 'static,
-    const D: usize,
->(
+pub fn experimental_pow_target<F: RichField + Extendable<D>, const D: usize>(
+    builder: &mut CircuitBuilder<F, D>,
+    a: Fq12Target<F, D>,
+    exp: Vec<u64>,
+) -> Fq12Target<F, D> {
+    let mut res = a.clone();
+    let mut is_started = false;
+    let naf = get_naf(exp);
+
+    for &z in naf.iter().rev() {
+        if is_started {
+            res = res.mul(builder, &res);
+        }
+
+        if z != 0 {
+            assert!(z == 1 || z == -1);
+            if is_started {
+                res = res.mul(builder, &a);
+            } else {
+                assert_eq!(z, 1);
+                is_started = true;
+            }
+        }
+    }
+
+    res
+}
+
+fn hard_part_BN<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     m: &Fq12Target<F, D>,
-) -> Fq12Target<F, D>
-where
-    <C as GenericConfig<D>>::Hasher: AlgebraicHasher<F>,
-{
-    let offset = Fq12Target::constant(builder, Fq12::one());
-    let exp_val = builder.constant(F::from_canonical_u64(BLS_X));
+) -> Fq12Target<F, D> {
+    // let offset = Fq12Target::constant(builder, Fq12::one());
+    // let exp_val = builder.constant(F::from_canonical_u64(BLS_X));
     // let mut exp_inputs = vec![];
     // let mut exp_outputs = vec![];
 
@@ -87,7 +108,8 @@ where
     let y1 = m.confugate(builder);
 
     // let mx = pow(builder, m, BN_X);
-    let mx = Fq12Target::empty(builder);
+    // let mx = Fq12Target::empty(builder);
+    let mx = experimental_pow_target(builder, m.clone(), vec![BLS_X]);
     // exp_inputs.push(Fq12ExpU64InputTarget {
     //     x: m.clone(),
     //     offset: offset.clone(),
@@ -97,7 +119,8 @@ where
 
     let mxp = frobenius_map(builder, &mx, 1);
     // let mx2 = pow(builder, &mx, BN_X);
-    let mx2 = Fq12Target::empty(builder);
+    // let mx2 = Fq12Target::empty(builder);
+    let mx2 = experimental_pow_target(builder, mx.clone(), vec![BLS_X]);
     // exp_inputs.push(Fq12ExpU64InputTarget {
     //     x: mx.clone(),
     //     offset: offset.clone(),
@@ -108,8 +131,8 @@ where
     let y2 = frobenius_map(builder, &mx2, 2);
     let y5 = mx2.confugate(builder);
     // let mx3 = pow(builder, &mx2, BN_X);
-    let mx3 = Fq12Target::empty(builder);
-    let x = mx2.clone();
+    // let mx3 = Fq12Target::empty(builder);
+    let mx3 = experimental_pow_target(builder, mx2, vec![BLS_X]);
     // exp_inputs.push(Fq12ExpU64InputTarget {
     //     x: mx2.clone(),
     //     offset,
@@ -161,19 +184,12 @@ fn easy_part<F: RichField + Extendable<D>, const D: usize>(
     f
 }
 
-pub fn final_exp_circuit<
-    F: RichField + Extendable<D>,
-    C: GenericConfig<D, F = F> + 'static,
-    const D: usize,
->(
+pub fn final_exp_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     a: Fq12Target<F, D>,
-) -> Fq12Target<F, D>
-where
-    <C as GenericConfig<D>>::Hasher: AlgebraicHasher<F>,
-{
+) -> Fq12Target<F, D> {
     let f0 = easy_part(builder, &a);
-    let f = hard_part_BN::<F, C, D>(builder, &f0);
+    let f = hard_part_BN::<F, D>(builder, &f0);
     f
 }
 
@@ -229,6 +245,7 @@ mod tests {
 
     #[test]
     fn test_final_exp_circuit() {
+        println!("TEEEEEEEEEEEEEEEEEEEEEEST");
         let rng = &mut rand::thread_rng();
         let Q = G2Affine::rand(rng);
         let P = G1Affine::rand(rng);
@@ -237,17 +254,17 @@ mod tests {
         let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
         let input_t = Fq12Target::constant(&mut builder, input.into());
-        let output = final_exp_circuit::<F, C, D>(&mut builder, input_t);
+        let output = final_exp_circuit::<F, D>(&mut builder, input_t);
         let output_expected = final_exp_native(input);
 
         let output_expected_t = Fq12Target::constant(&mut builder, output_expected.into());
 
         Fq12Target::connect(&mut builder, &output, &output_expected_t);
-        let data = builder.build::<C>();
-        dbg!(data.common.degree_bits());
+        // dbg!(data.common.degree_bits());
 
         let now = Instant::now();
         let pw = PartialWitness::new();
+        let data = builder.build::<C>();
         let _proof = data.prove(pw);
         println!("time: {:?}", now.elapsed());
     }
