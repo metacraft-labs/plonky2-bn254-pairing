@@ -110,7 +110,7 @@ fn fp12_multiply_with_line_unequal_native(
     sparse_fp12_multiply_native(g, line)
 }
 
-fn miller_loop_BLS_native(Q: &G2Affine, P: &G1Affine, pseudo_binary_encoding: &[u8]) -> MyFq12 {
+fn _miller_loop_native(Q: &G2Affine, P: &G1Affine, pseudo_binary_encoding: &[u8]) -> MyFq12 {
     let mut i = pseudo_binary_encoding.len() - 1;
 
     while pseudo_binary_encoding[i] == 0 {
@@ -169,7 +169,7 @@ fn miller_loop_BLS_native(Q: &G2Affine, P: &G1Affine, pseudo_binary_encoding: &[
     f
 }
 
-fn multi_miller_loop_BLS_native(
+fn _multi_miller_loop_native(
     pairs: Vec<(&G1Affine, &G2Affine)>,
     pseudo_binary_encoding: &[u8],
 ) -> MyFq12 {
@@ -267,11 +267,11 @@ pub const PSEUDO_BINARY_ENCODING: [u8; 64] = [
 ];
 
 pub fn miller_loop_native(Q: &G2Affine, P: &G1Affine) -> MyFq12 {
-    miller_loop_BLS_native(Q, P, &PSEUDO_BINARY_ENCODING)
+    _miller_loop_native(Q, P, &PSEUDO_BINARY_ENCODING)
 }
 
 pub fn multi_miller_loop_native(pairs: Vec<(&G1Affine, &G2Affine)>) -> MyFq12 {
-    multi_miller_loop_BLS_native(pairs, &PSEUDO_BINARY_ENCODING)
+    _multi_miller_loop_native(pairs, &PSEUDO_BINARY_ENCODING)
 }
 
 #[cfg(test)]

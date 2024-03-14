@@ -165,7 +165,7 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
     naf
 }
 
-fn hard_part_BN_native(m: MyFq12) -> MyFq12 {
+fn hard_part_native(m: MyFq12) -> MyFq12 {
     let mp = frobenius_map_native(m, 1);
     let mp2 = frobenius_map_native(m, 2);
     let mp3 = frobenius_map_native(m, 3);
@@ -234,7 +234,7 @@ pub fn frob_coeffs(index: usize) -> Fq2 {
 }
 
 // out = in^{ (q^6 - 1)*(q^2 + 1) }
-fn easy_part<'v>(a: MyFq12) -> MyFq12 {
+fn easy_part_native<'v>(a: MyFq12) -> MyFq12 {
     let f1 = conjugate_fp12(a);
     let f2 = {
         let f1_fp12: Fq12 = f1.into();
@@ -249,8 +249,8 @@ fn easy_part<'v>(a: MyFq12) -> MyFq12 {
 
 // out = in^{(q^12 - 1)/r}
 pub fn final_exp_native(a: MyFq12) -> MyFq12 {
-    let f0 = easy_part(a);
-    let f = hard_part_BN_native(f0);
+    let f0 = easy_part_native(a);
+    let f = hard_part_native(f0);
     f
 }
 
