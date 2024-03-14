@@ -9,7 +9,6 @@ use plonky2::{
 };
 
 use plonky2_bls12_381::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
-// use starky_bn254::{circuits::fq12_exp_u64_circuit, input_target::Fq12ExpU64InputTarget};
 
 use crate::final_exp_native::{frob_coeffs, get_naf, BLS_X};
 
@@ -86,15 +85,10 @@ pub fn experimental_pow_target<F: RichField + Extendable<D>, const D: usize>(
     res
 }
 
-fn hard_part_BN<F: RichField + Extendable<D>, const D: usize>(
+fn hard_part<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     m: &Fq12Target<F, D>,
 ) -> Fq12Target<F, D> {
-    // let offset = Fq12Target::constant(builder, Fq12::one());
-    // let exp_val = builder.constant(F::from_canonical_u64(BLS_X));
-    // let mut exp_inputs = vec![];
-    // let mut exp_outputs = vec![];
-
     let mp = frobenius_map(builder, m, 1);
     let mp2 = frobenius_map(builder, m, 2);
     let mp3 = frobenius_map(builder, m, 3);
@@ -103,41 +97,22 @@ fn hard_part_BN<F: RichField + Extendable<D>, const D: usize>(
     let y0 = mp.mul(builder, &mp2_mp3);
     let y1 = m.confugate(builder);
 
-    // let mx = pow(builder, m, BN_X);
-    // let mx = Fq12Target::empty(builder);
+    // let mx = pow(builder, m, BLS_X);
     let m_inv = m.inv(builder);
     let mx = experimental_pow_target(builder, m_inv, vec![BLS_X]);
-    // exp_inputs.push(Fq12ExpU64InputTarget {
-    //     x: m.clone(),
-    //     offset: offset.clone(),
-    //     exp_val,
-    // });
-    // exp_outputs.push(mx.clone());
-
     let mxp = frobenius_map(builder, &mx, 1);
-    // let mx2 = pow(builder, &mx, BN_X);
-    // let mx2 = Fq12Target::empty(builder);
+
+    // let mx2 = pow(builder, &mx, BLS_X);
     let mx_inv = mx.inv(builder);
     let mx2 = experimental_pow_target(builder, mx_inv, vec![BLS_X]);
-    // exp_inputs.push(Fq12ExpU64InputTarget {
-    //     x: mx.clone(),
-    //     offset: offset.clone(),
-    //     exp_val,
-    // });
-    // exp_outputs.push(mx2.clone());
     let mx2p = frobenius_map(builder, &mx2, 1);
+
     let y2 = frobenius_map(builder, &mx2, 2);
     let y5 = mx2.confugate(builder);
-    // let mx3 = pow(builder, &mx2, BN_X);
-    // let mx3 = Fq12Target::empty(builder);
+
+    // let mx3 = pow(builder, &mx2, BLS_X);
     let mx2_inv = mx2.inv(builder);
     let mx3 = experimental_pow_target(builder, mx2_inv, vec![BLS_X]);
-    // exp_inputs.push(Fq12ExpU64InputTarget {
-    //     x: mx2.clone(),
-    //     offset,
-    //     exp_val,
-    // });
-    // exp_outputs.push(mx3.clone());
     let mx3p = frobenius_map(builder, &mx3, 1);
 
     let y3 = mxp.confugate(builder);
@@ -161,14 +136,6 @@ fn hard_part_BN<F: RichField + Extendable<D>, const D: usize>(
     T0 = T0.mul(builder, &T0);
     T0 = T0.mul(builder, &T1);
 
-    // let exp_outputs2 = fq12_exp_u64_circuit::<F, C, D>(builder, &exp_inputs);
-    // exp_outputs
-    //     .iter()
-    //     .zip(exp_outputs2.iter())
-    //     .for_each(|(a, b)| {
-    //         Fq12Target::connect(builder, a, b);
-    //     });
-
     T0
 }
 
@@ -188,7 +155,7 @@ pub fn final_exp_circuit<F: RichField + Extendable<D>, const D: usize>(
     a: Fq12Target<F, D>,
 ) -> Fq12Target<F, D> {
     let f0 = easy_part(builder, &a);
-    let f = hard_part_BN::<F, D>(builder, &f0);
+    let f = hard_part::<F, D>(builder, &f0);
     f
 }
 
@@ -258,7 +225,6 @@ mod tests {
         let output_expected_t = Fq12Target::constant(&mut builder, output_expected.into());
 
         Fq12Target::connect(&mut builder, &output, &output_expected_t);
-        // dbg!(data.common.degree_bits());
 
         let now = Instant::now();
         let pw = PartialWitness::new();

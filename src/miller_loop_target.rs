@@ -127,7 +127,7 @@ fn fp12_multiply_with_line_equal<F: RichField + Extendable<D>, const D: usize>(
     sparse_fp12_multiply(builder, g, line)
 }
 
-fn miller_loop_BLS<F: RichField + Extendable<D>, const D: usize>(
+fn _miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     Q: &G2Target<F, D>,
     P: &G1Target<F, D>,
@@ -191,7 +191,7 @@ fn miller_loop_BLS<F: RichField + Extendable<D>, const D: usize>(
     f
 }
 
-fn multi_miller_loop_BLS<F: RichField + Extendable<D>, const D: usize>(
+fn _multi_miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     pairs: Vec<(&G1Target<F, D>, &G2Target<F, D>)>,
     pseudo_binary_encoding: &[u8],
@@ -275,14 +275,14 @@ pub fn miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     Q: &G2Target<F, D>,
     P: &G1Target<F, D>,
 ) -> Fq12Target<F, D> {
-    miller_loop_BLS(builder, Q, P, &PSEUDO_BINARY_ENCODING)
+    _miller_loop_circuit(builder, Q, P, &PSEUDO_BINARY_ENCODING)
 }
 
 pub fn multi_miller_loop_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     pairs: Vec<(&G1Target<F, D>, &G2Target<F, D>)>,
 ) -> Fq12Target<F, D> {
-    multi_miller_loop_BLS(builder, pairs, &PSEUDO_BINARY_ENCODING)
+    _multi_miller_loop_circuit(builder, pairs, &PSEUDO_BINARY_ENCODING)
 }
 
 #[cfg(test)]
