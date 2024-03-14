@@ -1,15 +1,11 @@
 #![allow(non_snake_case)]
-use ark_bls12_381::{Fq, Fq12, Fq2};
+use ark_bls12_381::{Fq, Fq2};
 use ark_ff::{Field, One, Zero};
 use num_bigint::BigUint;
 
 use plonky2::{
-    field::extension::Extendable,
-    hash::hash_types::RichField,
-    plonk::{
-        circuit_builder::CircuitBuilder,
-        config::{AlgebraicHasher, GenericConfig},
-    },
+    field::extension::Extendable, hash::hash_types::RichField,
+    plonk::circuit_builder::CircuitBuilder,
 };
 
 use plonky2_bls12_381::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
@@ -109,7 +105,8 @@ fn hard_part_BN<F: RichField + Extendable<D>, const D: usize>(
 
     // let mx = pow(builder, m, BN_X);
     // let mx = Fq12Target::empty(builder);
-    let mx = experimental_pow_target(builder, m.clone(), vec![BLS_X]);
+    let m_inv = m.inv(builder);
+    let mx = experimental_pow_target(builder, m_inv, vec![BLS_X]);
     // exp_inputs.push(Fq12ExpU64InputTarget {
     //     x: m.clone(),
     //     offset: offset.clone(),
@@ -120,7 +117,8 @@ fn hard_part_BN<F: RichField + Extendable<D>, const D: usize>(
     let mxp = frobenius_map(builder, &mx, 1);
     // let mx2 = pow(builder, &mx, BN_X);
     // let mx2 = Fq12Target::empty(builder);
-    let mx2 = experimental_pow_target(builder, mx.clone(), vec![BLS_X]);
+    let mx_inv = mx.inv(builder);
+    let mx2 = experimental_pow_target(builder, mx_inv, vec![BLS_X]);
     // exp_inputs.push(Fq12ExpU64InputTarget {
     //     x: mx.clone(),
     //     offset: offset.clone(),
@@ -132,7 +130,8 @@ fn hard_part_BN<F: RichField + Extendable<D>, const D: usize>(
     let y5 = mx2.confugate(builder);
     // let mx3 = pow(builder, &mx2, BN_X);
     // let mx3 = Fq12Target::empty(builder);
-    let mx3 = experimental_pow_target(builder, mx2, vec![BLS_X]);
+    let mx2_inv = mx2.inv(builder);
+    let mx3 = experimental_pow_target(builder, mx2_inv, vec![BLS_X]);
     // exp_inputs.push(Fq12ExpU64InputTarget {
     //     x: mx2.clone(),
     //     offset,
@@ -245,7 +244,6 @@ mod tests {
 
     #[test]
     fn test_final_exp_circuit() {
-        println!("TEEEEEEEEEEEEEEEEEEEEEEST");
         let rng = &mut rand::thread_rng();
         let Q = G2Affine::rand(rng);
         let P = G1Affine::rand(rng);

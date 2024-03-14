@@ -267,7 +267,6 @@ mod tests {
 
     use crate::{
         final_exp_native::{experimental_pow, BLS_X},
-        final_exp_native_helpers::exponentiate_native,
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
@@ -360,27 +359,4 @@ mod tests {
 
         assert_eq!(_32_inv, inv_2_pow_5); // 1 / (32 ^ 1) == (1 / 2) ^ 5
     }
-
-    // #[test]
-    // fn test_cyclotomic_exponentiation() {
-    //     // 1 / (32 ^ 2)
-    //     let _32 = Fq12::from(32);
-    //     let _32_pow_2_inv = _32
-    //         .pow(&(BigUint::one() + BigUint::one()).to_u64_digits())
-    //         .inverse()
-    //         .unwrap();
-
-    //     // (1 / 2) ^ 10
-    //     let two = Fq12::from(2);
-    //     let inv_two = two.inverse().unwrap();
-    //     let inv_2_pow_10: Fq12 = experimental_pow(inv_two.into(), vec![10]).into();
-
-    //     assert_eq!(inv_2_pow_10, _32_pow_2_inv);
-
-    //     //
-    //     let inv_two_pow_blsx: Fq12 = experimental_pow(inv_two.into(), vec![BLS_X]).into();
-    //     let x = exponentiate_native(two);
-
-    //     assert_eq!(x, inv_two_pow_blsx);
-    // }
 }
