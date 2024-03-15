@@ -89,16 +89,10 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
         for _ in 0..64 {
             if e & 1 == 1 {
                 let z = 2i8 - (e % 4) as i8;
-                // e -= z as u64;
-                // Is this useless since our constant in NAF form doesn't contain negative ones?
-                // if z == -1 {
-                //     e += 1;
-                // }
                 naf.push(z);
             } else {
                 naf.push(0);
             }
-            // Moving this outside the if and else statements since we are not checking if z == -1
             e /= 2;
         }
         if e != 0 {
@@ -122,10 +116,6 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
         assert!(exp[len] == 1);
         naf.push(1);
     }
-    // Still fails when hardcoded 1 instead of -1
-    // let _naf_len = naf.len();
-    // let mut naf = naf;
-    // naf[_naf_len - 2] = 1;
 
     naf
 }
