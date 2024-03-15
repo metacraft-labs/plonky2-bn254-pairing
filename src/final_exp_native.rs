@@ -53,7 +53,7 @@ pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
     }
 }
 
-pub fn experimental_pow(a: MyFq12, exp: Vec<u64>) -> MyFq12 {
+pub fn pow_native(a: MyFq12, exp: Vec<u64>) -> MyFq12 {
     let mut res = a.clone();
     let mut is_started = false;
     let naf = get_naf(exp);
@@ -74,41 +74,6 @@ pub fn experimental_pow(a: MyFq12, exp: Vec<u64>) -> MyFq12 {
         }
     }
 
-    res
-}
-
-pub fn pow_native(a: MyFq12, exp: Vec<u64>) -> MyFq12 {
-    let mut res = a.clone();
-    let mut is_started = false;
-    let naf = get_naf(exp);
-    // let naf = [
-    //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-    //     1, 0, 1, 1,
-    // ];
-
-    for &z in naf.iter().rev() {
-        if is_started {
-            res = res * res;
-        }
-
-        if z != 0 {
-            assert!(z == 1 || z == -1);
-            if is_started {
-                res = if z == 1 {
-                    res * a
-                } else {
-                    let res_fp12: Fq12 = res.into();
-                    let a_fp12: Fq12 = a.into();
-                    let divided = res_fp12 / a_fp12;
-                    divided.into()
-                };
-            } else {
-                assert_eq!(z, 1);
-                is_started = true;
-            }
-        }
-    }
     res
 }
 
@@ -174,15 +139,15 @@ fn hard_part_native(m: MyFq12) -> MyFq12 {
     let y0 = mp * mp2_mp3;
     let y1 = conjugate_fp12(m);
     let m: Fq12 = m.into();
-    let mx = experimental_pow(m.inverse().unwrap().into(), vec![BLS_X]);
+    let mx = pow_native(m.inverse().unwrap().into(), vec![BLS_X]);
     let mxp = frobenius_map_native(mx, 1);
     let mx: Fq12 = mx.into();
-    let mx2 = experimental_pow(mx.inverse().unwrap().into(), vec![BLS_X]);
+    let mx2 = pow_native(mx.inverse().unwrap().into(), vec![BLS_X]);
     let mx2p = frobenius_map_native(mx2, 1);
     let y2 = frobenius_map_native(mx2, 2);
     let y5 = conjugate_fp12(mx2);
     let mx2: Fq12 = mx2.into();
-    let mx3 = experimental_pow(mx2.inverse().unwrap().into(), vec![BLS_X]);
+    let mx3 = pow_native(mx2.inverse().unwrap().into(), vec![BLS_X]);
     let mx3p = frobenius_map_native(mx3, 1);
     let mx: MyFq12 = mx.into();
 
@@ -266,7 +231,7 @@ mod tests {
     use num_bigint::BigUint;
 
     use crate::{
-        final_exp_native::{experimental_pow, BLS_X},
+        final_exp_native::{pow_native, BLS_X},
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
@@ -312,7 +277,7 @@ mod tests {
     fn test_pow() {
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let output: Fq12 = experimental_pow(x.into(), vec![BLS_X]).into();
+        let output: Fq12 = pow_native(x.into(), vec![BLS_X]).into();
         let output2 = x.pow(&[BLS_X]);
         assert_eq!(output, output2);
         let final_x: Fq12 = final_exp_native(x.into()).into();
@@ -333,17 +298,20 @@ mod tests {
     }
 
     #[test]
-    fn test_partial_pow() {
+    fn test_pow_in_isolation() {
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+
         // 1 / (2 ^ 15132376222941642752)
         let two = Fq12::from(2);
-        let two_pow_blsx: Fq12 = experimental_pow(two.into(), vec![BLS_X]).into();
+        let two_pow_blsx: Fq12 = pow_native(two.into(), vec![BLS_X]).into();
         let two_pow_blsx_inv = two_pow_blsx.inverse().unwrap();
         //
 
         // (1 / 2) ^ 15132376222941642752
         let two = Fq12::from(2);
         let inv_two = two.inverse().unwrap();
-        let inv_two_pow_blsx: Fq12 = experimental_pow(inv_two.into(), vec![BLS_X]).into();
+        let inv_two_pow_blsx: Fq12 = pow_native(inv_two.into(), vec![BLS_X]).into();
 
         assert_eq!(two_pow_blsx_inv, inv_two_pow_blsx); // 1 / (2 ^ 15132376222941642752) == (1 / 2) ^ 15132376222941642752
 
@@ -355,8 +323,19 @@ mod tests {
             .unwrap();
 
         // (1 / 2) ^ 5
-        let inv_2_pow_5: Fq12 = experimental_pow(inv_two.into(), vec![5]).into();
+        let inv_2_pow_5: Fq12 = pow_native(inv_two.into(), vec![5]).into();
 
         assert_eq!(_32_inv, inv_2_pow_5); // 1 / (32 ^ 1) == (1 / 2) ^ 5
+
+        // 1 / (x ^ 15132376222941642752)
+        let x_pow_blsx: Fq12 = pow_native(x.into(), vec![BLS_X]).into();
+        let x_pow_blsx_inv = x_pow_blsx.inverse().unwrap();
+        //
+
+        // (1 / x) ^ 15132376222941642752
+        let inv_x = x.inverse().unwrap();
+        let inv_x_pow_blsx: Fq12 = pow_native(inv_x.into(), vec![BLS_X]).into();
+
+        assert_eq!(x_pow_blsx_inv, inv_x_pow_blsx); // 1 / (x ^ 15132376222941642752) == (1 / x) ^ 15132376222941642752
     }
 }
