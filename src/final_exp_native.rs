@@ -166,48 +166,32 @@ pub fn get_naf(mut exp: Vec<u64>) -> Vec<i8> {
 }
 
 fn hard_part_native(m: MyFq12) -> MyFq12 {
-    let mp = frobenius_map_native(m, 1);
-    let mp2 = frobenius_map_native(m, 2);
-    let mp3 = frobenius_map_native(m, 3);
+    let pow1 = experimental_pow(m, vec![(BLS_X + 1) / 3]);
+    let pow2 = experimental_pow(pow1, vec![BLS_X + 1]);
 
-    let mp2_mp3 = mp2 * mp3;
-    let y0 = mp * mp2_mp3;
-    let y1 = conjugate_fp12(m);
-    let m: Fq12 = m.into();
-    let mx = experimental_pow(m.inverse().unwrap().into(), vec![BLS_X]);
-    let mxp = frobenius_map_native(mx, 1);
-    let mx: Fq12 = mx.into();
-    let mx2 = experimental_pow(mx.inverse().unwrap().into(), vec![BLS_X]);
-    let mx2p = frobenius_map_native(mx2, 1);
-    let y2 = frobenius_map_native(mx2, 2);
-    let y5 = conjugate_fp12(mx2);
-    let mx2: Fq12 = mx2.into();
-    let mx3 = experimental_pow(mx2.inverse().unwrap().into(), vec![BLS_X]);
-    let mx3p = frobenius_map_native(mx3, 1);
-    let mx: MyFq12 = mx.into();
+    let pow3 = frobenius_map_native(pow2, 6);
 
-    let y3 = conjugate_fp12(mxp);
-    let mx_mx2p = mx * mx2p;
-    let y4 = conjugate_fp12(mx_mx2p);
-    let mx3_mx3p = mx3 * mx3p;
-    let y6 = conjugate_fp12(mx3_mx3p);
+    let pow4 = experimental_pow(pow3, vec![BLS_X]);
 
-    let mut T0 = y6 * y6;
-    T0 = T0 * y4;
-    T0 = T0 * y5;
+    let pow5 = frobenius_map_native(pow2, 1);
 
-    let mut T1 = y3 * y5;
-    T1 = T1 * T0;
-    T0 = y2 * T0;
-    T1 = T1 * T1;
-    T1 = T1 * T0;
-    T1 = T1 * T1;
-    T0 = T1 * y1;
-    T1 = T1 * y0;
-    T0 = T0 * T0;
-    T0 = T0 * T1;
+    let pow6 = pow4 * pow5;
 
-    T0
+    let pow7 = experimental_pow(pow6, vec![BLS_X]);
+
+    let pow8 = experimental_pow(pow7, vec![BLS_X]);
+
+    let pow9 = frobenius_map_native(pow6, 2);
+
+    let pow10 = frobenius_map_native(pow6, 6);
+
+    let pow11 = pow8 * pow9;
+
+    let pow12 = pow10 * pow11;
+
+    let pow13 = pow12 * m;
+
+    pow13
 }
 
 fn conjugate_fp12(a: MyFq12) -> MyFq12 {
@@ -249,7 +233,9 @@ fn easy_part_native<'v>(a: MyFq12) -> MyFq12 {
 
 // out = in^{(q^12 - 1)/r}
 pub fn final_exp_native(a: MyFq12) -> MyFq12 {
+    // println!("a: {:?}", a);
     let f0 = easy_part_native(a);
+    // println!("f0: {:?}", f0);
     let f = hard_part_native(f0);
     f
 }
@@ -260,7 +246,7 @@ mod tests {
 
     use ark_bls12_381::{Fq, Fq12, Fr, G1Affine, G2Affine};
     use ark_ec::AffineRepr;
-    use ark_ff::Field;
+    use ark_ff::{BigInt, Field};
     use ark_std::UniformRand;
     use num::One;
     use num_bigint::BigUint;
