@@ -226,7 +226,7 @@ mod tests {
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
-    use super::final_exp_native;
+    use super::{final_exp_native, frobenius_map_native};
 
     #[test]
     fn test_pairing_final() {
@@ -327,5 +327,13 @@ mod tests {
         let inv_x_pow_blsx: Fq12 = pow_native(inv_x.into(), vec![BLS_X]).into();
 
         assert_eq!(x_pow_blsx_inv, inv_x_pow_blsx); // 1 / (x ^ 15132376222941642752) == (1 / x) ^ 15132376222941642752
+    }
+
+    #[test]
+    fn test_frobenius_map_in_isolation() {
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+        let mp = frobenius_map_native(x.into(), 2);
+        assert!(false);
     }
 }
