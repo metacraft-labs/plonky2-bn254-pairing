@@ -276,8 +276,11 @@ pub fn multi_miller_loop_native(pairs: Vec<(&G1Affine, &G2Affine)>) -> MyFq12 {
 
 #[cfg(test)]
 mod tests {
-    use ark_bls12_381::{G1Affine, G2Affine};
+    use ark_bls12_381::{Fq12, G1Affine, G2Affine};
+    use ark_ec::{pairing::Pairing, AffineRepr};
+    use ark_ff::Field;
     use ark_std::UniformRand;
+    use bls12_381::MillerLoopResult;
 
     use super::{miller_loop_native, multi_miller_loop_native};
 
@@ -293,5 +296,57 @@ mod tests {
         let r_expected = r0 * r1;
         let r = multi_miller_loop_native(vec![(&P0, &Q0), (&P1, &Q1)]);
         assert_eq!(r, r_expected);
+    }
+
+    #[test]
+    fn test_g1_generator_g2_identity() {
+        // let rng = &mut rand::thread_rng();
+        let P0 = G1Affine::identity();
+        let Q0 = G2Affine::generator();
+        let one = Fq12::ZERO;
+        let r = miller_loop_native(&Q0, &P0);
+
+        assert_eq!(one, r.into());
+    }
+
+    #[test]
+    fn test_bls12_381_miller_loop() {
+        use bls12_381::{G1Affine, G2Affine};
+        let P0 = G1Affine::default();
+        let Q0 = G2Affine::default();
+        let ml = bls12_381::multi_miller_loop(&[(&P0, &Q0.into())]);
+        let mlr_one = MillerLoopResult::default();
+        let f_f = ml.final_exponentiation();
+        let f_s = mlr_one.final_exponentiation();
+        assert_eq!(f_f, f_s);
+    }
+
+    #[test]
+    fn test_algebra_miller_loop() {
+        let rng = &mut rand::thread_rng();
+        let P0 = G1Affine::generator();
+        let Q0 = G2Affine::identity();
+        let ml = ark_bls12_381::Bls12_381::miller_loop(P0, Q0);
+        let one = Fq12::ONE;
+
+        assert_eq!(one, ml.0);
+        //
+
+        let P0 = G1Affine::identity();
+        let Q0 = G2Affine::generator();
+        let ml = ark_bls12_381::Bls12_381::miller_loop(P0, Q0);
+        assert_eq!(one, ml.0);
+
+        //
+        let P0 = G1Affine::rand(rng);
+        let P1 = G1Affine::rand(rng);
+        let Q0 = G2Affine::rand(rng);
+        let Q1 = G2Affine::rand(rng);
+
+        let r0 = ark_bls12_381::Bls12_381::miller_loop(P0, Q0);
+        let r1 = ark_bls12_381::Bls12_381::miller_loop(P1, Q1);
+        let _r_expected = r0.0 * r1.0;
+        // let r = ark_bls12_381::Bls12_381::multi_miller_loop((P0, Q0), (P1, Q1).into()).0;
+        // assert_eq!(r, r_expected);
     }
 }

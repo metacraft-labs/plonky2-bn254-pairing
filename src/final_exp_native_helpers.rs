@@ -19,6 +19,13 @@ pub fn fq2_mul_by_nonresidue(a: &Fq2) -> Fq2 {
     Fq2 { c0, c1 }
 }
 
+pub fn mul_by_nonresidue(f: Fq2) -> Fq2 {
+    let c0 = f.c0 - f.c1;
+    let c1 = f.c0 + f.c1;
+
+    Fq2 { c0, c1 }
+}
+
 pub fn fq4_square(c0: &mut Fq2, c1: &mut Fq2, a0: &Fq2, a1: &Fq2) {
     let t0 = a0.square();
     let t1 = a1.square();

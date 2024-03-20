@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use std::{ops::Div, vec};
 
-use ark_bls12_381::{Fq, Fq12, Fq2};
+use ark_bls12_381::{Fq, Fq12, Fq2, Fq6};
 use ark_ff::Field;
 use ark_std::Zero;
 use itertools::Itertools;
@@ -10,7 +10,7 @@ use num_traits::One;
 
 use plonky2_bls12_381::fields::native::MyFq12;
 
-use crate::miller_loop_native::conjugate_fp2;
+use crate::{final_exp_native_helpers::mul_by_nonresidue, miller_loop_native::conjugate_fp2};
 
 pub const BLS_X: u64 = 15132376222941642752;
 
@@ -165,6 +165,152 @@ fn hard_part_native(m: MyFq12) -> MyFq12 {
     T0
 }
 
+fn cyclotomic_square(f: Fq12) -> Fq12 {
+    let t0 = f.c1.c1.square();
+    let t1 = f.c0.c0.square();
+    let t6 = f.c1.c1 - f.c0.c0; // NOT USED
+    let t6 = t6.square(); // NOT USED
+    let t6 = t6 - t0; // NOT USED
+    let t6 = t6 - t1; // NOT USED
+    let t2 = f.c0.c2.square();
+    let t3 = f.c1.c0.square();
+    let t7 = f.c0.c2 + f.c1.c0;
+    let t7 = t7.square();
+    let t7 = t7 - t2;
+    let t7 = t7 - t3;
+    let t4 = f.c1.c2.square();
+    let t5 = f.c0.c1.square();
+    let t8 = f.c1.c2 + f.c0.c1;
+    let t8 = t8.square();
+    let t8 = t8 - t4;
+    let t8 = t8 - t5;
+    let t8 = mul_by_nonresidue(t8);
+
+    let t0 = mul_by_nonresidue(t0);
+    let t0 = t0 + t1;
+    let t2 = mul_by_nonresidue(t2);
+    let t2 = t2 + t3;
+    let t4 = mul_by_nonresidue(t4);
+    let t4 = t4 + t5;
+
+    let c0c0 = t0 - f.c0.c0;
+    let c0c0 = c0c0.double();
+    let c0c0 = c0c0 + t0;
+
+    let c0c1 = t2 - f.c0.c1;
+    let c0c1 = c0c1.double();
+    let c0c1 = c0c1 + t2;
+
+    let c0c2 = t4 - f.c0.c2;
+    let c0c2 = c0c2.double();
+    let c0c2 = c0c2 + t4;
+
+    let c1c0 = t8 + f.c1.c0;
+    let c1c0 = c1c0.double();
+    let c1c0 = c1c0 + t8;
+
+    let c1c1 = t6 + f.c1.c1; // NOT USED
+    let c1c1 = c1c1.double(); // NOT USED
+    let c1c1 = c1c1 + t6; // NOT USED
+
+    let c1c2 = t7 + f.c1.c2;
+    let c1c2 = c1c2.double();
+    let c1c1 = c1c2 + t7;
+
+    let c0 = Fq6::new(c0c0, c0c1, c0c2);
+
+    let c1 = Fq6::new(c1c0, c1c1, c1c2);
+
+    Fq12 { c0, c1 }
+}
+
+fn noir_exponentiation(f: Fq12) -> Fq12 {
+    let six = Fq12::from(6);
+    let seven = Fq12::from(7);
+    let eight = Fq12::from(8);
+    let ten = Fq12::from(10);
+
+    let t3 = cyclotomic_square(f);
+    let t5 = cyclotomic_square(t3);
+    let result = cyclotomic_square(t5);
+    let t0 = cyclotomic_square(result);
+    let t2 = f * t0;
+    let t0 = t2 * t3;
+    let t1 = f * t0;
+    let t4 = result * t2;
+    let t6 = cyclotomic_square(t2);
+    let t1 = t1 * t0;
+    let t0 = t1 * t3;
+    let t6 = n_square(t6); // six
+    let t5 = t5 * t6;
+    let t5 = t4 * t5;
+    let t5 = n_square(t5); // seven
+    let t4 = t4 * t5;
+    let t4 = n_square(t4); // eight
+    let t4 = t4 * t0;
+    let t3 = t3 * t4;
+    let t3 = n_square(t3); // six
+    let t2 = t2 * t3;
+    let t2 = n_square(t2); // eight
+    let t2 = t0 * t2;
+    let t2 = n_square(t2); // six
+    let t2 = t0 * t2;
+    let t2 = n_square(t2); // ten
+    let t1 = t1 * t2;
+    let t1 = n_square(t1); // six
+    let t0 = t0 * t1;
+    let result = result * t0;
+    result
+}
+
+fn n_square(f: Fq12) -> Fq12 {
+    let mut out = f;
+
+    for _ in 0..2 {
+        out = cyclotomic_square(out);
+    }
+
+    out
+}
+
+pub fn hard_part_based_on_noir(z: Fq12) -> MyFq12 {
+    let t0 = noir_exponentiation(z);
+    let t0 = conjugate_fp12(t0.into());
+    let t0 = cyclotomic_square(t0.into());
+    let t2 = noir_exponentiation(t0);
+    let t2 = conjugate_fp12(t2.into());
+    let t1 = cyclotomic_square(t2.into());
+    let t2: Fq12 = t2.into();
+    let t2: Fq12 = t2 * t1;
+    let t2 = t2 * z;
+    let t1 = noir_exponentiation(t2);
+    let t1 = cyclotomic_square(t1.into());
+    let t1 = t1 * t2;
+    let t1 = conjugate_fp12(t1.into());
+    let t3 = conjugate_fp12(t1);
+    let t1 = cyclotomic_square(t0.into());
+    let t1 = t1 * z;
+    let t1 = conjugate_fp12(t1.into());
+    let t1 = t1 * t3;
+    let t1: Fq12 = t1.into();
+    let t0 = t0 * t1;
+    let t2 = t2 * t1;
+    let t1: MyFq12 = t1.into();
+    let t3 = frobenius_map_native(t1, 2);
+    let t3: Fq12 = t3.into();
+    let t2 = t2 * t3;
+    let t3 = conjugate_fp12(z.into());
+    let t0: MyFq12 = t0.into();
+    let t3 = t3 * t0;
+    let t1 = frobenius_map_native(t3, 3);
+    let t1: Fq12 = t1.into();
+    let t2 = t2 * t1;
+    let t1 = frobenius_map_native(t0, 1);
+    let t2: MyFq12 = t2.into();
+    let t1 = t1 * t2;
+    t1
+}
+
 fn conjugate_fp12(a: MyFq12) -> MyFq12 {
     let coeffs: Vec<Fq> = a
         .coeffs
@@ -202,6 +348,12 @@ fn easy_part_native<'v>(a: MyFq12) -> MyFq12 {
     f
 }
 
+pub fn test_final_exp_native(a: MyFq12) -> MyFq12 {
+    let f0 = easy_part_native(a);
+    let f = hard_part_based_on_noir(f0.into());
+    f
+}
+
 // out = in^{(q^12 - 1)/r}
 pub fn final_exp_native(a: MyFq12) -> MyFq12 {
     let f0 = easy_part_native(a);
@@ -220,12 +372,11 @@ mod tests {
     };
     use ark_ff::Field;
     use ark_std::UniformRand;
-    use bls12_381::MillerLoopResult;
     use num::One;
     use num_bigint::BigUint;
 
     use crate::{
-        final_exp_native::{hard_part_native, pow_native, BLS_X},
+        final_exp_native::{hard_part_native, pow_native, test_final_exp_native, BLS_X},
         final_exp_native_helpers::final_exponentiation,
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
     };
@@ -399,11 +550,26 @@ mod tests {
         let y = y.unwrap().0;
 
         use ark_ff::PrimeField;
-        let p: BigUint = ark_bls12_381::Fq::MODULUS.into();
-        let r: BigUint = ark_bls12_381::Fr::MODULUS.into();
+        let p: BigUint = Fq::MODULUS.into();
+        let r: BigUint = Fr::MODULUS.into();
         let exp = (p.pow(12) - 1u32) / r;
         let final_x2 = x.pow(&exp.to_u64_digits());
 
         assert_eq!(y, final_x2);
+    }
+
+    #[test]
+    fn test_noir_pow() {
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+        let final_x: Fq12 = test_final_exp_native(x.into()).into();
+
+        use ark_ff::PrimeField;
+        let p: BigUint = Fq::MODULUS.into();
+        let r: BigUint = Fr::MODULUS.into();
+        let exp = (p.pow(12) - 1u32) / r;
+        let final_x2 = x.pow(&exp.to_u64_digits());
+
+        assert_eq!(final_x, final_x2); // fails when x is large number
     }
 }
