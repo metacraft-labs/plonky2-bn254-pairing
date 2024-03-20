@@ -187,6 +187,55 @@ pub fn fq12_frobenius_map(x: Fq12, power: usize) -> Fq12 {
     }
 }
 
-pub fn final_exponentiation() {
+pub fn final_exponentiation(f: Fq12) -> Fq12 {
     const POWER_HOLDER: usize = 1;
+
+    let mut t0 = fq12_frobenius_map(f, POWER_HOLDER);
+    t0 = fq12_frobenius_map(t0, POWER_HOLDER);
+    t0 = fq12_frobenius_map(t0, POWER_HOLDER);
+    t0 = fq12_frobenius_map(t0, POWER_HOLDER);
+    t0 = fq12_frobenius_map(t0, POWER_HOLDER);
+    t0 = fq12_frobenius_map(t0, POWER_HOLDER);
+
+    let mut t1 = f.inverse().unwrap();
+
+    let mut t2 = t0 * t1;
+    t1 = t2.clone();
+
+    t2 = fq12_frobenius_map(t2, POWER_HOLDER);
+    t2 = fq12_frobenius_map(t2, POWER_HOLDER);
+
+    t2 = t2 * t1;
+    t1 = fq12_cyclotomic_square(&t2);
+    t1 = fq12_conjugate(&t1);
+    let mut t3 = cycolotomic_exp(&t2);
+    let mut t4 = fq12_cyclotomic_square(&t3);
+    let mut t5 = t1 * t3;
+    t1 = cycolotomic_exp(&t5);
+    t0 = cycolotomic_exp(&t1);
+    let mut t6 = cycolotomic_exp(&t0);
+    t6 = t6 * t4;
+    t4 = cycolotomic_exp(&t6);
+    t5 = fq12_conjugate(&t5);
+    let t = t5 * t2;
+    t4 = t4 * t;
+    t5 = fq12_conjugate(&t2);
+    t1 = t1 * t2;
+
+    for _ in 0..3 {
+        t1 = fq12_frobenius_map(t1, POWER_HOLDER)
+    }
+
+    t6 = t6 * t5;
+    t6 = fq12_frobenius_map(t6, POWER_HOLDER);
+    t3 = t3 * t0;
+
+    for _ in 0..2 {
+        t3 = fq12_frobenius_map(t3, POWER_HOLDER)
+    }
+
+    t3 = t3 * t1;
+    t3 = t3 * t6;
+
+    t3 * t4
 }

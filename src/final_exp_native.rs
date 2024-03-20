@@ -214,19 +214,24 @@ mod tests {
     use std::ops::Mul;
 
     use ark_bls12_381::{Fq, Fq12, Fr, G1Affine, G2Affine};
-    use ark_ec::AffineRepr;
+    use ark_ec::{
+        pairing::{MillerLoopOutput, Pairing},
+        AffineRepr,
+    };
     use ark_ff::Field;
     use ark_std::UniformRand;
+    use bls12_381::MillerLoopResult;
     use num::One;
     use num_bigint::BigUint;
 
     use crate::{
-        final_exp_native::{pow_native, BLS_X},
+        final_exp_native::{hard_part_native, pow_native, BLS_X},
+        final_exp_native_helpers::final_exponentiation,
         miller_loop_native::{miller_loop_native, multi_miller_loop_native},
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
-    use super::{final_exp_native, frobenius_map_native};
+    use super::{easy_part_native, final_exp_native, frobenius_map_native};
 
     #[test]
     fn test_pairing_final() {
@@ -333,7 +338,72 @@ mod tests {
     fn test_frobenius_map_in_isolation() {
         let rng = &mut rand::thread_rng();
         let x = Fq12::rand(rng);
-        let mp = frobenius_map_native(x.into(), 2);
+        let _mp = frobenius_map_native(x.into(), 2);
         assert!(false);
+    }
+
+    #[test]
+    fn test_final_exponentiation() {
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+        let final_x = final_exponentiation(x);
+
+        // out = in^{(q^12 - 1)/r}
+        use ark_ff::PrimeField;
+        let p: BigUint = Fq::MODULUS.into();
+        let r: BigUint = Fr::MODULUS.into();
+        let exp = (p.pow(12) - 1u64) / r;
+        let final_x2 = x.pow(&exp.to_u64_digits());
+        let k = Fq12::one();
+
+        assert_eq!(final_x, final_x2);
+    }
+
+    #[test]
+    fn test_easy_part() {
+        // out = in^{ (q^6 - 1)*(q^2 + 1) }
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+        let easy_part_res: Fq12 = easy_part_native(x.into()).into();
+
+        use ark_ff::PrimeField;
+        let p: BigUint = Fq::MODULUS.into();
+        let exp = (p.pow(6) - 1u32) * (p.pow(2) + 1u32);
+        let final_x2 = x.pow(&exp.to_u64_digits());
+
+        assert_eq!(easy_part_res, final_x2);
+    }
+
+    #[test]
+    fn test_hard_part() {
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+        let hard_part_res: Fq12 = hard_part_native(x.into()).into();
+
+        use ark_ff::PrimeField;
+        let p: BigUint = Fq::MODULUS.into();
+        let r: BigUint = Fr::MODULUS.into();
+        let easy_exp = (p.pow(6) - 1u32) * (p.pow(2) + 1u32);
+        let f_easy = x.pow(&easy_exp.to_u64_digits());
+        let hard_exp = (p.pow(4) - p.pow(2) + 1u32) / r;
+        let f_hard = f_easy.pow(&hard_exp.to_u64_digits());
+
+        assert_eq!(hard_part_res, f_hard);
+    }
+
+    #[test]
+    fn test_algebra_fe() {
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+        let y = ark_bls12_381::Bls12_381::final_exponentiation(MillerLoopOutput(x));
+        let y = y.unwrap().0;
+
+        use ark_ff::PrimeField;
+        let p: BigUint = ark_bls12_381::Fq::MODULUS.into();
+        let r: BigUint = ark_bls12_381::Fr::MODULUS.into();
+        let exp = (p.pow(12) - 1u32) / r;
+        let final_x2 = x.pow(&exp.to_u64_digits());
+
+        assert_eq!(y, final_x2);
     }
 }
