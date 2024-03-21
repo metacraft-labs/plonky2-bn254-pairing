@@ -10,7 +10,7 @@ use plonky2::{
 
 use plonky2_bls12_381::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
 
-use crate::final_exp_native::{frob_coeffs, get_naf, BLS_X};
+use crate::final_exp_native::{experimental_pow, frob_coeffs, get_naf, BLS_X};
 
 fn frobenius_map<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
@@ -89,54 +89,20 @@ fn hard_part<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     m: &Fq12Target<F, D>,
 ) -> Fq12Target<F, D> {
-    let mp = frobenius_map(builder, m, 1);
-    let mp2 = frobenius_map(builder, m, 2);
-    let mp3 = frobenius_map(builder, m, 3);
-
-    let mp2_mp3 = mp2.mul(builder, &mp3);
-    let y0 = mp.mul(builder, &mp2_mp3);
-    let y1 = m.confugate(builder);
-
-    // let mx = pow(builder, m, BLS_X);
-    let m_inv = m.inv(builder);
-    let mx = experimental_pow_target(builder, m_inv, vec![BLS_X]);
-    let mxp = frobenius_map(builder, &mx, 1);
-
-    // let mx2 = pow(builder, &mx, BLS_X);
-    let mx_inv = mx.inv(builder);
-    let mx2 = experimental_pow_target(builder, mx_inv, vec![BLS_X]);
-    let mx2p = frobenius_map(builder, &mx2, 1);
-
-    let y2 = frobenius_map(builder, &mx2, 2);
-    let y5 = mx2.confugate(builder);
-
-    // let mx3 = pow(builder, &mx2, BLS_X);
-    let mx2_inv = mx2.inv(builder);
-    let mx3 = experimental_pow_target(builder, mx2_inv, vec![BLS_X]);
-    let mx3p = frobenius_map(builder, &mx3, 1);
-
-    let y3 = mxp.confugate(builder);
-    let mx_mx2p = mx.mul(builder, &mx2p);
-    let y4 = mx_mx2p.confugate(builder);
-    let mx3_mx3p = mx3.mul(builder, &mx3p);
-    let y6 = mx3_mx3p.confugate(builder);
-
-    let mut T0 = y6.mul(builder, &y6);
-    T0 = T0.mul(builder, &y4);
-    T0 = T0.mul(builder, &y5);
-
-    let mut T1 = y3.mul(builder, &y5);
-    T1 = T1.mul(builder, &T0);
-    T0 = y2.mul(builder, &T0);
-    T1 = T1.mul(builder, &T1);
-    T1 = T1.mul(builder, &T0);
-    T1 = T1.mul(builder, &T1);
-    T0 = T1.mul(builder, &y1);
-    T1 = T1.mul(builder, &y0);
-    T0 = T0.mul(builder, &T0);
-    T0 = T0.mul(builder, &T1);
-
-    T0
+    let pow1 = experimental_pow_target(builder, m.clone(), vec![(BLS_X + 1) / 3]);
+    let pow2 = experimental_pow_target(builder, pow1, vec![BLS_X + 1]);
+    let pow3 = frobenius_map(builder, &pow2, 6);
+    let pow4 = experimental_pow_target(builder, pow3, vec![BLS_X]);
+    let pow5 = frobenius_map(builder, &pow2, 1);
+    let pow6 = pow4.mul(builder, &pow5);
+    let pow7 = experimental_pow_target(builder, pow6.clone(), vec![BLS_X]);
+    let pow8 = experimental_pow_target(builder, pow7, vec![BLS_X]);
+    let pow9 = frobenius_map(builder, &pow6, 2);
+    let pow10 = frobenius_map(builder, &pow6, 6);
+    let pow11 = pow8.mul(builder, &pow9);
+    let pow12 = pow10.mul(builder, &pow11);
+    let pow13 = pow12.mul(builder, m);
+    pow13
 }
 
 fn easy_part<F: RichField + Extendable<D>, const D: usize>(
