@@ -1,11 +1,7 @@
 use ark_bls12_381::{Fq12, G1Affine, G2Affine};
 use plonky2::{
-    field::extension::Extendable,
-    hash::hash_types::RichField,
-    plonk::{
-        circuit_builder::CircuitBuilder,
-        config::{AlgebraicHasher, GenericConfig},
-    },
+    field::extension::Extendable, hash::hash_types::RichField,
+    plonk::circuit_builder::CircuitBuilder,
 };
 use plonky2_bls12_381::{
     curves::{g1curve_target::G1Target, g2curve_target::G2Target},
@@ -21,20 +17,13 @@ pub fn pairing(p: G1Affine, q: G2Affine) -> Fq12 {
     final_exp_native(miller_loop_native(&q, &p)).into()
 }
 
-pub fn pairing_circuit<
-    F: RichField + Extendable<D>,
-    C: GenericConfig<D, F = F> + 'static,
-    const D: usize,
->(
+pub fn pairing_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     p: G1Target<F, D>,
     q: G2Target<F, D>,
-) -> Fq12Target<F, D>
-where
-    <C as GenericConfig<D>>::Hasher: AlgebraicHasher<F>,
-{
+) -> Fq12Target<F, D> {
     let f = miller_loop_circuit(builder, &q, &p);
-    final_exp_circuit::<F, C, D>(builder, f)
+    final_exp_circuit::<F, D>(builder, f)
 }
 
 #[cfg(test)]
@@ -70,7 +59,7 @@ mod test {
         let mut builder = CircuitBuilder::<F, D>::new(config);
         let p_t = G1Target::constant(&mut builder, p);
         let q_t = G2Target::constant(&mut builder, q);
-        let output_t = pairing_circuit::<F, C, D>(&mut builder, p_t, q_t);
+        let output_t = pairing_circuit::<F, D>(&mut builder, p_t, q_t);
 
         let data = builder.build::<C>();
         let now = Instant::now();
