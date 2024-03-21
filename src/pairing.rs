@@ -35,7 +35,7 @@ pub fn pairing_circuit<F: RichField + Extendable<D>, const D: usize>(
 mod test {
     use std::time::Instant;
 
-    use ark_bls12_381::{G1Affine, G2Affine};
+    use ark_bls12_381::{Fq12, G1Affine, G2Affine};
     use ark_ec::pairing::Pairing;
     use ark_std::UniformRand;
     use plonky2::{
@@ -59,7 +59,7 @@ mod test {
         let rng = &mut rand::thread_rng();
         let p = G1Affine::rand(rng);
         let q = G2Affine::rand(rng);
-        let output = ark_bls12_381::Bls12_381::pairing(p, q).0;
+        let output = pairing(p, q);
 
         let config = CircuitConfig::pairing_config();
         let mut builder = CircuitBuilder::<F, D>::new(config);
