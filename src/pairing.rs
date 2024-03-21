@@ -8,6 +8,11 @@ use plonky2_bls12_381::{
     fields::fq12_target::Fq12Target,
 };
 
+use jemallocator::Jemalloc;
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
 use crate::{
     final_exp_native::final_exp_native, final_exp_target::final_exp_circuit,
     miller_loop_native::miller_loop_native, miller_loop_target::miller_loop_circuit,
