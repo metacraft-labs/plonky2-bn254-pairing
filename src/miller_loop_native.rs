@@ -276,7 +276,9 @@ pub fn multi_miller_loop_native(pairs: Vec<(&G1Affine, &G2Affine)>) -> MyFq12 {
 
 #[cfg(test)]
 mod tests {
-    use ark_bls12_381::{G1Affine, G2Affine};
+    use ark_bls12_381::{Fq12, G1Affine, G2Affine};
+    use ark_ec::pairing::Pairing;
+    use ark_ff::Field;
     use ark_std::UniformRand;
 
     use super::{miller_loop_native, multi_miller_loop_native};
@@ -293,5 +295,14 @@ mod tests {
         let r_expected = r0 * r1;
         let r = multi_miller_loop_native(vec![(&P0, &Q0), (&P1, &Q1)]);
         assert_eq!(r, r_expected);
+    }
+
+    #[test]
+    fn test_miller_loop_ark() {
+        let p0 = G1Affine::identity();
+        let q0 = G2Affine::identity();
+        let one = Fq12::ONE;
+        let mlr = ark_bls12_381::Bls12_381::miller_loop(p0, q0);
+        assert_eq!(one, mlr.0);
     }
 }

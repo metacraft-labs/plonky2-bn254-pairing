@@ -12,7 +12,7 @@ use plonky2_bls12_381::fields::{fq12_target::Fq12Target, fq2_target::Fq2Target};
 
 use crate::final_exp_native::{frob_coeffs, get_naf, BLS_X};
 
-fn frobenius_map<F: RichField + Extendable<D>, const D: usize>(
+pub fn frobenius_map<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     a: &Fq12Target<F, D>,
     power: usize,

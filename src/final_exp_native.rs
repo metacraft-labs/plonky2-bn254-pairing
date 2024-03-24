@@ -366,14 +366,7 @@ mod tests {
         let x = Fq12::rand(rng);
         let y = ark_bls12_381::Bls12_381::final_exponentiation(MillerLoopOutput(x));
         let y = y.unwrap().0;
-
         let z = test_hard_part_exponentiation(x.into());
-
-        // use ark_ff::PrimeField;
-        // let p: BigUint = Fq::MODULUS.into();
-        // let r: BigUint = Fr::MODULUS.into();
-        // let exp = (p.pow(12) - 1u32) / r;
-        // let final_x2 = x.pow(&exp.to_u64_digits());
 
         assert_eq!(y, z);
     }
