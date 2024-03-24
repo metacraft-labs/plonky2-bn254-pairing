@@ -1,4 +1,4 @@
-use ark_bls12_381::{Fq12, G1Affine, G2Affine};
+use ark_bls12_381::{Fq12, Fq2, G1Affine, G2Affine};
 use ark_ec::AffineRepr;
 use ark_ff::{BitIteratorBE, Field};
 use ark_std::cfg_chunks_mut;
@@ -35,4 +35,11 @@ pub fn test_multi_miller_loop(
 
 
     // f
+}
+
+pub fn ell(f: Fq12 , g2_coeffs: Vec<Fq2>, p: G1Affine) {
+    let mut c0 = g2_coeffs[0];
+    let mut c1 = g2_coeffs[1];
+    let mut c2 = g2_coeffs[2];
+    let (px, py) = p.xy().unwrap();
 }
