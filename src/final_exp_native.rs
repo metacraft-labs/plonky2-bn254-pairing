@@ -210,7 +210,7 @@ fn hard_part_native(m: MyFq12) -> MyFq12 {
     T0
 }
 
-fn conjugate_fp12(a: MyFq12) -> MyFq12 {
+pub fn conjugate_fp12(a: MyFq12) -> MyFq12 {
     let coeffs: Vec<Fq> = a
         .coeffs
         .iter()
@@ -259,7 +259,7 @@ mod tests {
     use std::ops::Mul;
 
     use ark_bls12_381::{Fq, Fq12, Fr, G1Affine, G2Affine};
-    use ark_ec::AffineRepr;
+    use ark_ec::{pairing::{MillerLoopOutput, Pairing}, AffineRepr};
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num::One;
@@ -267,7 +267,7 @@ mod tests {
 
     use crate::{
         final_exp_native::{experimental_pow, BLS_X},
-        miller_loop_native::{miller_loop_native, multi_miller_loop_native},
+        miller_loop_native::{miller_loop_native, multi_miller_loop_native}, test::test_hard_part_exponentiation,
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 
@@ -358,5 +358,23 @@ mod tests {
         let inv_2_pow_5: Fq12 = experimental_pow(inv_two.into(), vec![5]).into();
 
         assert_eq!(_32_inv, inv_2_pow_5); // 1 / (32 ^ 1) == (1 / 2) ^ 5
+    }
+
+    #[test]
+    fn test_ark() {
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+        let y = ark_bls12_381::Bls12_381::final_exponentiation(MillerLoopOutput(x));
+        let y = y.unwrap().0;
+
+        let z = test_hard_part_exponentiation(x.into());
+
+        // use ark_ff::PrimeField;
+        // let p: BigUint = Fq::MODULUS.into();
+        // let r: BigUint = Fr::MODULUS.into();
+        // let exp = (p.pow(12) - 1u32) / r;
+        // let final_x2 = x.pow(&exp.to_u64_digits());
+
+        assert_eq!(y, z);
     }
 }
