@@ -13,6 +13,7 @@ use plonky2_bls12_381::fields::native::MyFq12;
 use crate::miller_loop_native::conjugate_fp2;
 
 pub const BLS_X: u64 = 15132376222941642752;
+pub const BLS_X_IS_NEGATIVE: bool = true;
 
 pub fn frobenius_map_native(a: MyFq12, power: usize) -> MyFq12 {
     let neg_one: BigUint = Fq::from(-1).into();
