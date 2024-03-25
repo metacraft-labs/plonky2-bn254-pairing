@@ -259,7 +259,10 @@ mod tests {
     use std::ops::Mul;
 
     use ark_bls12_381::{Fq, Fq12, Fr, G1Affine, G2Affine};
-    use ark_ec::{pairing::{MillerLoopOutput, Pairing}, AffineRepr};
+    use ark_ec::{
+        pairing::{MillerLoopOutput, Pairing},
+        AffineRepr,
+    };
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num::One;
@@ -267,7 +270,8 @@ mod tests {
 
     use crate::{
         final_exp_native::{experimental_pow, BLS_X},
-        miller_loop_native::{miller_loop_native, multi_miller_loop_native}, test::test_hard_part_exponentiation,
+        miller_loop_native::{miller_loop_native, multi_miller_loop_native},
+        test::test_hard_part_exponentiation,
     };
     use plonky2_bls12_381::fields::debug_tools::print_ark_fq;
 

@@ -139,7 +139,7 @@ fn hard_part<F: RichField + Extendable<D>, const D: usize>(
     T0
 }
 
-fn easy_part<F: RichField + Extendable<D>, const D: usize>(
+pub fn easy_part<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     a: &Fq12Target<F, D>,
 ) -> Fq12Target<F, D> {
@@ -164,6 +164,7 @@ mod tests {
     use std::time::Instant;
 
     use ark_bls12_381::{Fq12, G1Affine, G2Affine};
+    use ark_ec::pairing::{MillerLoopOutput, Pairing};
     use ark_std::UniformRand;
     use rand::Rng;
 
@@ -176,12 +177,12 @@ mod tests {
         },
     };
 
-    use crate::final_exp_target::frobenius_map;
     use crate::miller_loop_native::miller_loop_native;
     use crate::{
         final_exp_native::{final_exp_native, frobenius_map_native},
         final_exp_target::final_exp_circuit,
     };
+    use crate::{final_exp_target::frobenius_map, test::test_fin_exp_circuit};
     use plonky2_bls12_381::fields::fq12_target::Fq12Target;
 
     type F = GoldilocksField;
@@ -221,6 +222,29 @@ mod tests {
         let input_t = Fq12Target::constant(&mut builder, input.into());
         let output = final_exp_circuit::<F, D>(&mut builder, input_t);
         let output_expected = final_exp_native(input);
+
+        let output_expected_t = Fq12Target::constant(&mut builder, output_expected.into());
+
+        Fq12Target::connect(&mut builder, &output, &output_expected_t);
+
+        let now = Instant::now();
+        let pw = PartialWitness::new();
+        let data = builder.build::<C>();
+        let _proof = data.prove(pw);
+        println!("time: {:?}", now.elapsed());
+    }
+
+    #[test]
+    fn test_jfinal_exp_circuit() {
+        let config = CircuitConfig::pairing_config();
+        let mut builder = CircuitBuilder::<F, D>::new(config);
+        let rng = &mut rand::thread_rng();
+        let x = Fq12::rand(rng);
+        let input_t = Fq12Target::constant(&mut builder, x);
+        let output = test_fin_exp_circuit::<F, D>(&mut builder, input_t);
+
+        let output_expected = ark_bls12_381::Bls12_381::final_exponentiation(MillerLoopOutput(x));
+        let output_expected = output_expected.unwrap().0;
 
         let output_expected_t = Fq12Target::constant(&mut builder, output_expected.into());
 

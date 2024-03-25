@@ -1,9 +1,15 @@
 use ark_bls12_381::Fq12;
 use ark_ff::Field;
-use plonky2::{field::extension::Extendable, hash::hash_types::RichField, plonk::circuit_builder::CircuitBuilder};
+use plonky2::{
+    field::extension::Extendable, hash::hash_types::RichField,
+    plonk::circuit_builder::CircuitBuilder,
+};
 use plonky2_bls12_381::fields::{fq12_target::Fq12Target, native::MyFq12};
 
-use crate::{final_exp_native::{conjugate_fp12, experimental_pow, frobenius_map_native, BLS_X}, final_exp_target::{experimental_pow_target, frobenius_map}};
+use crate::{
+    final_exp_native::{conjugate_fp12, experimental_pow, frobenius_map_native, BLS_X},
+    final_exp_target::{easy_part, experimental_pow_target, frobenius_map},
+};
 
 // out = in^{ (q^6 - 1)*(q^2 + 1) }
 pub fn easy_part_native<'v>(a: MyFq12) -> MyFq12 {
@@ -19,7 +25,7 @@ pub fn easy_part_native<'v>(a: MyFq12) -> MyFq12 {
     f
 }
 
-pub fn hard_part_native(r: Fq12)-> Fq12 {
+pub fn hard_part_native(r: Fq12) -> Fq12 {
     let mut y0 = r.square();
     let mut y1 = Fq12::ZERO;
     y1 = experimental_pow(r.into(), vec![BLS_X]).into();
@@ -52,7 +58,7 @@ pub fn hard_part_native(r: Fq12)-> Fq12 {
 
 pub fn hard_part_target<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
-    r: Fq12Target<F, D>
+    r: Fq12Target<F, D>,
 ) -> Fq12Target<F, D> {
     let mut y0 = r.mul(builder, &r); // optimize square
     let mut y1 = experimental_pow_target(builder, r.clone(), vec![BLS_X]);
@@ -84,7 +90,16 @@ pub fn hard_part_target<F: RichField + Extendable<D>, const D: usize>(
     r
 }
 
-pub fn test_hard_part_exponentiation(a: MyFq12) -> Fq12{
+pub fn test_fin_exp_circuit<F: RichField + Extendable<D>, const D: usize>(
+    builder: &mut CircuitBuilder<F, D>,
+    a: Fq12Target<F, D>,
+) -> Fq12Target<F, D> {
+    let f0 = easy_part(builder, &a);
+    let f = hard_part_target(builder, f0);
+    f
+}
+
+pub fn test_hard_part_exponentiation(a: MyFq12) -> Fq12 {
     let f0 = easy_part_native(a);
     let f = hard_part_native(f0.into());
     f

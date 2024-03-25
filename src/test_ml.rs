@@ -8,22 +8,22 @@ use crate::final_exp_native::BLS_X;
 pub fn test_multi_miller_loop(
     a: impl IntoIterator<Item = impl Into<G1Affine>>,
     b: impl IntoIterator<Item = impl Into<G2Affine>>,
-)  {
+) {
     use itertools::Itertools;
 
     let mut pairs = a
-    .into_iter()
-    .zip_eq(b)
-    .filter_map(|(p, q)| {
-        let (p, q) = (p.into(), q.into());
-        match !p.is_zero() && !q.is_zero() {
-            true => Some((p, q)),
-            false => None,
-        }
-    })
-    .collect::<Vec<_>>();
+        .into_iter()
+        .zip_eq(b)
+        .filter_map(|(p, q)| {
+            let (p, q) = (p.into(), q.into());
+            match !p.is_zero() && !q.is_zero() {
+                true => Some((p, q)),
+                false => None,
+            }
+        })
+        .collect::<Vec<_>>();
 
-    let mut f = cfg_chunks_mut!(pairs, 4).map(|pairs|{
+    let mut f = cfg_chunks_mut!(pairs, 4).map(|pairs| {
         let mut f = Fq12::ONE;
         for i in BitIteratorBE::without_leading_zeros([BLS_X]).skip(1) {
             f.square_in_place();
@@ -33,11 +33,10 @@ pub fn test_multi_miller_loop(
         }
     });
 
-
     // f
 }
 
-pub fn ell(f: Fq12 , g2_coeffs: Vec<Fq2>, p: G1Affine) {
+pub fn ell(f: Fq12, g2_coeffs: Vec<Fq2>, p: G1Affine) {
     let mut c0 = g2_coeffs[0];
     let mut c1 = g2_coeffs[1];
     let mut c2 = g2_coeffs[2];
