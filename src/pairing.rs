@@ -31,6 +31,7 @@ mod test {
     use std::time::Instant;
 
     use ark_bls12_381::{G1Affine, G2Affine};
+    use ark_ec::pairing::Pairing;
     use ark_std::UniformRand;
     use plonky2::{
         field::goldilocks_field::GoldilocksField,
@@ -42,7 +43,11 @@ mod test {
     };
     use plonky2_bls12_381::curves::{g1curve_target::G1Target, g2curve_target::G2Target};
 
-    use crate::pairing::{pairing, pairing_circuit};
+    use crate::{
+        pairing::{pairing, pairing_circuit},
+        test::test_jn_pairing,
+        test_ml::{G1Prepared, G2Prepared},
+    };
 
     #[test]
     fn test_pairing_circuit() {

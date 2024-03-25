@@ -9,6 +9,7 @@ use plonky2_bls12_381::fields::{fq12_target::Fq12Target, native::MyFq12};
 use crate::{
     final_exp_native::{conjugate_fp12, experimental_pow, frobenius_map_native, BLS_X},
     final_exp_target::{easy_part, experimental_pow_target, frobenius_map},
+    test_ml::{test_multi_miller_loop, G1Prepared, G2Prepared},
 };
 
 // out = in^{ (q^6 - 1)*(q^2 + 1) }
@@ -103,4 +104,11 @@ pub fn test_hard_part_exponentiation(a: MyFq12) -> Fq12 {
     let f0 = easy_part_native(a);
     let f = hard_part_native(f0.into());
     f
+}
+
+pub fn test_jn_pairing(
+    a: impl IntoIterator<Item = impl Into<G1Prepared>>,
+    b: impl IntoIterator<Item = impl Into<G2Prepared>>,
+) -> Fq12 {
+    test_hard_part_exponentiation(test_multi_miller_loop(a, b).into())
 }

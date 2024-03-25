@@ -281,7 +281,10 @@ mod tests {
     use ark_ff::Field;
     use ark_std::UniformRand;
 
-    use crate::test_ml::{test_multi_miller_loop, G1Prepared, G2Prepared};
+    use crate::{
+        test::test_jn_pairing,
+        test_ml::{test_multi_miller_loop, G1Prepared, G2Prepared},
+    };
 
     use super::{miller_loop_native, multi_miller_loop_native};
 
@@ -320,5 +323,15 @@ mod tests {
         let mlr_testj_native = test_multi_miller_loop([G1Prepared(p0)], [G2Prepared::from(q0)]);
 
         assert_eq!(mlr_testj_native, mlr_ark.0);
+    }
+
+    #[test]
+    fn test_j_pairing() {
+        let rng = &mut rand::thread_rng();
+        let p0 = G1Affine::rand(rng);
+        let q0 = G2Affine::rand(rng);
+        let pairing_ark = ark_bls12_381::Bls12_381::pairing(p0, q0).0;
+        let jtest_pairing = test_jn_pairing([G1Prepared(p0)], [G2Prepared::from(q0)]);
+        assert_eq!(pairing_ark, jtest_pairing);
     }
 }
